@@ -25,6 +25,10 @@
 #include <array>
 #include "TextFile.h"
 #include "SubtitleHelpers.h"
+#ifdef USE_LIBASS
+#include "SSASub.h"
+#endif
+#include "OpenTypeLangTags.h"
 
 enum tmode { TIME, FRAME }; // the meaning of STSEntry::start/end
 
@@ -45,6 +49,8 @@ public:
     std::array<COLORREF, 4> colors;    // usually: {primary, secondary, outline/background, shadow}
     std::array<BYTE, 4> alpha;
     int        charSet;
+    int        fRenderUsingLibass = false;
+    OpenTypeLang::HintStr openTypeLangHint;
     CString    fontName;
     double     fontSize;               // height
     double     fontScaleX, fontScaleY; // percent
@@ -57,6 +63,12 @@ public:
     double     fGaussianBlur;
     double     fontAngleZ, fontAngleX, fontAngleY;
     double     fontShiftX, fontShiftY;
+    DWORD      SrtResX = 1920;
+    DWORD      SrtResY = 1080;
+    bool       Kerning = false;
+    bool       ScaledBorderAndShadow = true;
+    CString    customTags;
+
     RelativeTo relativeTo;
 
     STSStyle();
@@ -130,6 +142,7 @@ class CSimpleTextSubtitle : public CAtlArray<STSEntry>
 protected:
     CAtlArray<STSSegment> m_segments;
     virtual void OnChanged() {}
+    bool usingLibass;
 
 public:
     CString m_name;
@@ -218,6 +231,25 @@ public:
 
     void SetStr(int i, CStringA str, bool fUnicode /* ignored */);
     void SetStr(int i, CStringW str, bool fUnicode);
+public:
+    STSStyle m_styleOverride; // the app can decide to use this style instead of a built-in one
+#ifdef USE_LIBASS
+    bool LoadASSFile(Subtitle::SubType subType);
+    bool LoadASSTrack(char* data, int size, Subtitle::SubType subType);
+    void UnloadASS();
+    void LoadASSSample(char* data, int dataSize, REFERENCE_TIME tStart, REFERENCE_TIME tStop);
+    void LoadASSFont(IPin* pPin, ASS_Library* ass, ASS_Renderer* renderer);
+    IFilterGraph* m_pGraph;
+    void SetFilterGraph(IFilterGraph* g) { m_pGraph = g; };
+    void SetPin(IPin* i) { m_pPin = i; };
+    bool m_assloaded;
+    bool m_assfontloaded;
+    std::unique_ptr<ASS_Library, ASS_LibraryDeleter> m_ass;
+    std::unique_ptr<ASS_Renderer, ASS_RendererDeleter> m_renderer;
+    std::unique_ptr<ASS_Track, ASS_TrackDeleter> m_track;
+#endif
+protected:
+    IPin* m_pPin;
 };
 
 extern const BYTE CharSetList[];
