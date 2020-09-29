@@ -55,7 +55,7 @@ Update_Status UpdateChecker::IsUpdateAvailable(const Version& currentVersion)
 {
     Update_Status updateAvailable = UPDATER_LATEST_STABLE;
 
-    try {
+    /* try {
         CInternetSession internet;
 
 #pragma warning(push)
@@ -137,7 +137,7 @@ Update_Status UpdateChecker::IsUpdateAvailable(const Version& currentVersion)
     } catch (CInternetException* pEx) {
         updateAvailable = UPDATER_ERROR;
         pEx->Delete();
-    }
+    } */
 
     return updateAvailable;
 }
@@ -216,11 +216,12 @@ bool UpdateChecker::IsAutoUpdateEnabled()
 {
     int& status = AfxGetAppSettings().nUpdaterAutoCheck;
 
-    if (status == AUTOUPDATE_UNKNOWN) { // First run
+    /* if (status == AUTOUPDATE_UNKNOWN) { // First run
         status = (AfxMessageBox(IDS_UPDATE_CONFIG_AUTO_CHECK, MB_ICONQUESTION | MB_YESNO, 0) == IDYES) ? AUTOUPDATE_ENABLE : AUTOUPDATE_DISABLE;
-    }
+    } */
 
-    return (status == AUTOUPDATE_ENABLE);
+    // return (status == AUTOUPDATE_ENABLE);
+    return (status == AUTOUPDATE_DISABLE);
 }
 
 bool UpdateChecker::IsTimeToAutoUpdate()
@@ -268,10 +269,11 @@ static UINT RunCheckForUpdateThread(LPVOID pParam)
 
 void UpdateChecker::CheckForUpdate(bool autoCheck /*= false*/)
 {
-    CAutoLock lock(&csIsCheckingForUpdate);
+    /* CAutoLock lock(&csIsCheckingForUpdate);
 
     if (!bIsCheckingForUpdate) {
         bIsCheckingForUpdate = true;
         AfxBeginThread(RunCheckForUpdateThread, (LPVOID)autoCheck);
-    }
+    } */
+    ShellExecute(nullptr, _T("open"), DOWNLOAD_URL, nullptr, nullptr, SW_SHOWNORMAL);
 }

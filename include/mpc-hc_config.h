@@ -32,10 +32,10 @@
 #endif
 
 #define WEBSITE_URL  _T("https://github.com/clsid2/mpc-hc/releases")
-#define DOWNLOAD_URL _T("https://github.com/clsid2/mpc-hc/releases")
+#define DOWNLOAD_URL _T("https://github.com/lifegpc/bili/releases")
 #define UPDATE_URL   _T("https://github.com/clsid2/mpc-hc/raw/develop/version.txt")
-#define TRAC_URL     _T("https://github.com/clsid2/mpc-hc/issues")
-#define BUGS_URL     _T("https://github.com/clsid2/mpc-hc/issues")
+#define TRAC_URL     _T("https://github.com/lifegpc/bili/issues")
+#define BUGS_URL     _T("https://github.com/lifegpc/bili/issues")
 
 #define USE_STATIC_UNRAR 1
 

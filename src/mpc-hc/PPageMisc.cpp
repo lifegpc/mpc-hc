@@ -131,6 +131,7 @@ BOOL CPPageMisc::OnInitDialog()
     m_sSaturation.Format(m_iSaturation ? _T("%+d") : _T("%d"), m_iSaturation);
 
     m_nUpdaterAutoCheck = s.nUpdaterAutoCheck;
+    m_updaterAutoCheckCtrl.EnableWindow(FALSE);
     m_nUpdaterDelay = s.nUpdaterDelay;
     m_updaterDelaySpin.SetRange32(1, 365);
 
