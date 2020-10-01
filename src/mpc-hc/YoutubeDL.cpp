@@ -31,23 +31,23 @@ struct CUtf16JSON {
 
 
 CYoutubeDLInstance::CYoutubeDLInstance()
-    : idx_out(0), idx_err(0),
+      /*: idx_out(0), idx_err(0),
       buf_out(nullptr), buf_err(nullptr),
       capacity_out(0), capacity_err(0),
-      pJSON(new CUtf16JSON)
+      pJSON(new CUtf16JSON) */
 {
 }
 
 CYoutubeDLInstance::~CYoutubeDLInstance()
 {
-    std::free(buf_out);
+    /* std::free(buf_out);
     std::free(buf_err);
-    delete pJSON;
+    delete pJSON; */
 }
 
 bool CYoutubeDLInstance::Run(CString url)
 {
-    const size_t bufsize = 2000;  //2KB initial buffer size
+    /* const size_t bufsize = 2000;  //2KB initial buffer size
 
     /////////////////////////////
     // Set up youtube-dl process
@@ -150,12 +150,13 @@ bool CYoutubeDLInstance::Run(CString url)
     CloseHandle(hStdout_r);
     CloseHandle(hStderr_r);
 
-    return loadJSON();
+    return loadJSON(); */
+    return false;
 }
 
 DWORD WINAPI CYoutubeDLInstance::BuffOutThread(void* ydl_inst)
 {
-    auto ydl = static_cast<CYoutubeDLInstance*>(ydl_inst);
+    /* auto ydl = static_cast<CYoutubeDLInstance*>(ydl_inst);
     DWORD read;
 
     while (ReadFile(ydl->hStdout_r, ydl->buf_out + ydl->idx_out, ydl->capacity_out - ydl->idx_out, &read, NULL)) {
@@ -173,12 +174,12 @@ DWORD WINAPI CYoutubeDLInstance::BuffOutThread(void* ydl_inst)
         }
     }
 
-    return GetLastError() == ERROR_BROKEN_PIPE ? 0 : GetLastError();
+    return GetLastError() == ERROR_BROKEN_PIPE ? 0 : GetLastError(); */
 }
 
 DWORD WINAPI CYoutubeDLInstance::BuffErrThread(void* ydl_inst)
 {
-    auto ydl = static_cast<CYoutubeDLInstance*>(ydl_inst);
+    /* auto ydl = static_cast<CYoutubeDLInstance*>(ydl_inst);
     DWORD read;
 
     while (ReadFile(ydl->hStderr_r, ydl->buf_err + ydl->idx_err, ydl->capacity_err - ydl->idx_err, &read, NULL)) {
@@ -196,7 +197,7 @@ DWORD WINAPI CYoutubeDLInstance::BuffErrThread(void* ydl_inst)
         }
     }
 
-    return GetLastError() == ERROR_BROKEN_PIPE ? 0 : GetLastError();
+    return GetLastError() == ERROR_BROKEN_PIPE ? 0 : GetLastError(); */
 }
 
 struct YDLStreamDetails {
@@ -215,7 +216,7 @@ struct YDLStreamDetails {
 
 bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool require_video, bool require_audio_only)
 {
-    details.protocol = format.HasMember(_T("protocol")) && !format[_T("protocol")].IsNull() ? format[_T("protocol")].GetString() : nullptr;
+    /* details.protocol = format.HasMember(_T("protocol")) && !format[_T("protocol")].IsNull() ? format[_T("protocol")].GetString() : nullptr;
     if (details.protocol && details.protocol != _T("http_dash_segments")) {
         details.url       = format[_T("url")].GetString();
         if (details.url.IsEmpty()) return false;
@@ -263,7 +264,7 @@ bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool re
     else {
         //YDL_LOG(_T("skip dash url = %s"), format[_T("url")].GetString());
     }
-    return false;
+    return false; */
 }
 
 #define YDL_FORMAT_AUTO      0
@@ -278,7 +279,7 @@ bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool re
 
 bool IsBetterYDLStream(YDLStreamDetails& first, YDLStreamDetails& second, int max_height, bool separate, int preferred_format)
 {
-    if (first.has_video) {
+    /* if (first.has_video) {
         // We want separate audio/video streams
         if (separate && first.has_audio && !second.has_audio) {
             return true;
@@ -414,13 +415,14 @@ bool IsBetterYDLStream(YDLStreamDetails& first, YDLStreamDetails& second, int ma
             return true;
         }
     }
+    return false; */
     return false;
 }
 
 // find best video track
 bool filterVideo(const Value& formats, YDLStreamDetails& ydl_sd, int max_height, bool separate, int preferred_format)
 {
-    YDLStreamDetails current;
+    /* YDLStreamDetails current;
     bool found = false;
 
     for (rapidjson::SizeType i = 0; i < formats.Size(); i++) {
@@ -432,13 +434,14 @@ bool filterVideo(const Value& formats, YDLStreamDetails& ydl_sd, int max_height,
             found = true;
         }
     }
-    return found;
+    return found; */
+    return false;
 }
 
 // find best audio track (in case we use separate streams)
 bool filterAudio(const Value& formats, YDLStreamDetails& ydl_sd)
 {
-    YDLStreamDetails current;
+    /* YDLStreamDetails current;
     bool found = false;
 
     for (rapidjson::SizeType i = 0; i < formats.Size(); i++) {
@@ -450,12 +453,13 @@ bool filterAudio(const Value& formats, YDLStreamDetails& ydl_sd)
             found = true;
         }
     }
-    return found;
+    return found; */
+    return false;
 }
 
 bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
 {
-    CString url;
+    /* CString url;
     CString extractor;
     YDLStreamDetails ydl_sd;
     YDLStreamURL stream;
@@ -532,16 +536,18 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
             }
         }
     }
-    return !streams.IsEmpty();
+    return !streams.IsEmpty(); */
+    return false;
 }
 
 bool CYoutubeDLInstance::loadJSON()
 {
-    //the JSON buffer is ASCII with Unicode encoded with escape characters
+    /* //the JSON buffer is ASCII with Unicode encoded with escape characters
     pJSON->d.Parse<rapidjson::kParseDefaultFlags, rapidjson::ASCII<>>(buf_out);
     if (pJSON->d.HasParseError()) {
         return false;
     }
     bIsPlaylist = pJSON->d.FindMember(_T("entries")) != pJSON->d.MemberEnd();
-    return true;
+    return true; */
+    return false;
 }

@@ -4700,13 +4700,9 @@ void CMainFrame::OnFileSaveAs()
         return;
     }
 
-    if (pli->m_bYoutubeDL || in.Find(_T("://")) >= 0) {
+    if (false) {
         // URL
-        if (pli->m_bYoutubeDL) {
-            out = _T("%(title)s.%(ext)s");
-        } else {
-            out = _T("choose_a_filename");
-        }
+        out = _T("%(title)s.%(ext)s");
     } else {
         out = PathUtils::StripPathOrUrl(in);
         ext = CPath(out).GetExtension().MakeLower();
@@ -4717,7 +4713,7 @@ void CMainFrame::OnFileSaveAs()
         }
     }
 
-    if (!pli->m_bYoutubeDL || pli->m_ydlSourceURL.IsEmpty() || (AfxGetAppSettings().sYDLCommandLine.Find(_T("-o ")) < 0)) {
+    if (/*!pli->m_bYoutubeDL || pli->m_ydlSourceURL.IsEmpty() || (AfxGetAppSettings().sYDLCommandLine.Find(_T("-o ")) < 0)*/true) {
         CFileDialog fd(FALSE, 0, out,
                        OFN_EXPLORER | OFN_ENABLESIZING | OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR,
                        ResStr(IDS_ALL_FILES_FILTER), GetModalParent(), 0);
@@ -4728,8 +4724,8 @@ void CMainFrame::OnFileSaveAs()
         }
     }
 
-    if (pli->m_bYoutubeDL && !pli->m_ydlSourceURL.IsEmpty()) {
-        DownloadWithYoutubeDL(pli->m_ydlSourceURL, out);
+    if (false) {
+        /*DownloadWithYoutubeDL(pli->m_ydlSourceURL, out);*/
         return;
     }
 
@@ -7675,7 +7671,7 @@ void CMainFrame::OnPlayPlay()
                 strOSD.LoadString(IDS_PLAY_BD);
             } else {
                 strOSD = GetFileName();
-                if (!strOSD.IsEmpty() && !m_wndPlaylistBar.GetCur()->m_bYoutubeDL) {
+                if (!strOSD.IsEmpty()/*  && !m_wndPlaylistBar.GetCur()->m_bYoutubeDL */) {
                     strOSD.TrimRight('/');
                     strOSD.Replace('\\', '/');
                     strOSD = strOSD.Mid(strOSD.ReverseFind('/') + 1);
@@ -9302,7 +9298,7 @@ bool CMainFrame::CanSkipFromClosedFile() {
             CPlaylistItem* pli = m_wndPlaylistBar.GetCur();
             if (pli && !pli->m_fns.IsEmpty()) {
                 CString in = pli->m_fns.GetHead();
-                if (!(pli->m_bYoutubeDL || in.Find(_T("://")) >= 0)) {
+                if (!(/* pli->m_bYoutubeDL ||  */in.Find(_T("://")) >= 0)) {
                     return true;
                 }
             }
@@ -9703,8 +9699,8 @@ void CMainFrame::AddFavorite(bool fDisplayMessage, bool fShowDialog)
         } else {
             CPlaylistItem pli;
             if (m_wndPlaylistBar.GetCur(pli)) {
-                if (pli.m_bYoutubeDL) {
-                    args.AddTail(pli.m_ydlSourceURL);
+                if (false) {
+                    // args.AddTail(pli.m_ydlSourceURL);
                 } else {
                     POSITION pos = pli.m_fns.GetHeadPosition();
                     while (pos) {
@@ -13430,7 +13426,7 @@ void CMainFrame::SendNowPlayingToSkype()
 
                 if (GetPlaybackMode() == PM_FILE) {
                     CString fn = label;
-                    if (!pli.m_bYoutubeDL && fn.Find(_T("://")) >= 0) {
+                    if (/* !pli.m_bYoutubeDL &&  */fn.Find(_T("://")) >= 0) {
                         int i = fn.Find('?');
                         if (i >= 0) {
                             fn = fn.Left(i);
@@ -15844,12 +15840,12 @@ void CMainFrame::OpenCurPlaylistItem(REFERENCE_TIME rtStart, bool reopen)
         }
     }
 
-    if (reopen && pli.m_bYoutubeDL) {
+    /* if (reopen && pli.m_bYoutubeDL) {
         if (ProcessYoutubeDLURL(pli.m_ydlSourceURL, false, true)) {
             OpenCurPlaylistItem(rtStart, false);
             return;
         }
-    }
+    } */
 
     CAutoPtr<OpenMediaData> p(m_wndPlaylistBar.GetCurOMD(rtStart));
     if (p) {
@@ -17977,13 +17973,14 @@ CString CMainFrame::GetFileName()
     CPlaylistItem* pli = m_wndPlaylistBar.GetCur();
     if (pli) {
         CString path(m_wndPlaylistBar.GetCurFileName());
-        if (!pli->m_bYoutubeDL && m_pFSF) {
+        if (/*!pli->m_bYoutubeDL && */m_pFSF) {
             CComHeapPtr<OLECHAR> pFN;
             if (SUCCEEDED(m_pFSF->GetCurFile(&pFN, nullptr))) {
                 path = pFN;
             }
         }
-        return pli->m_bYoutubeDL ? path : PathUtils::StripPathOrUrl(path);
+        // return pli->m_bYoutubeDL ? path : PathUtils::StripPathOrUrl(path);
+        return path;
     }
     return _T("");
 }
@@ -18323,7 +18320,7 @@ static const CString ydl_blacklist[] = {
 
 bool CMainFrame::CanSendToYoutubeDL(const CString url)
 {
-    if (url.Left(4).MakeLower() == _T("http") && AfxGetAppSettings().bUseYDL) {
+    /* if (url.Left(4).MakeLower() == _T("http") && AfxGetAppSettings().bUseYDL) {
         // Blacklist: don't use for IP addresses
         std::wcmatch regmatch;
         std::wregex regexp(LR"(https?:\/\/(\d{1,3}\.){3}\d{1,3}.*)");
@@ -18363,13 +18360,13 @@ bool CMainFrame::CanSendToYoutubeDL(const CString url)
         }
 
         return true;
-    }
+    } */
     return false;
 }
 
 bool CMainFrame::ProcessYoutubeDLURL(CString url, bool append, bool replace)
 {
-    auto& s = AfxGetAppSettings();
+    /* auto& s = AfxGetAppSettings();
     CAtlList<CYoutubeDLInstance::YDLStreamURL> streams;
     CAtlList<CString> filenames;
     CYoutubeDLInstance ydl;
@@ -18415,13 +18412,13 @@ bool CMainFrame::ProcessYoutubeDLURL(CString url, bool append, bool replace)
 
     if (!append && (!replace || !m_wndPlaylistBar.GetCur())) {
         m_wndPlaylistBar.SetFirst();
-    }
+    } */
     return true;
 }
 
 bool CMainFrame::DownloadWithYoutubeDL(CString url, CString filename)
 {
-    PROCESS_INFORMATION proc_info;
+    /*PROCESS_INFORMATION proc_info;
     STARTUPINFO startup_info;
     const auto& s = AfxGetAppSettings();
 
@@ -18447,7 +18444,7 @@ bool CMainFrame::DownloadWithYoutubeDL(CString url, CString filename)
     }
 
     CloseHandle(proc_info.hProcess);
-    CloseHandle(proc_info.hThread);
+    CloseHandle(proc_info.hThread);*/
 
     return true;
 }

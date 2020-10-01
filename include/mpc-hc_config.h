@@ -31,9 +31,9 @@
 #endif
 #endif
 
-#define WEBSITE_URL  _T("https://github.com/clsid2/mpc-hc/releases")
+#define WEBSITE_URL  _T("https://github.com/lifegpc/mpc-hc")
 #define DOWNLOAD_URL _T("https://github.com/lifegpc/bili/releases")
-#define UPDATE_URL   _T("https://github.com/clsid2/mpc-hc/raw/develop/version.txt")
+#define UPDATE_URL   _T("https://github.com/lifegpc/bili/raw/master/version.txt")
 #define TRAC_URL     _T("https://github.com/lifegpc/bili/issues")
 #define BUGS_URL     _T("https://github.com/lifegpc/bili/issues")
 
