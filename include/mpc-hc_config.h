@@ -33,7 +33,8 @@
 
 #define WEBSITE_URL  _T("https://github.com/lifegpc/mpc-hc")
 #define DOWNLOAD_URL _T("https://github.com/lifegpc/bili/releases")
-#define UPDATE_URL   _T("https://github.com/lifegpc/bili/raw/master/version.txt")
+#define UPDATE_URL   _T("https://github.com/lifegpc/bili/raw/ldev/version.txt")
+#define BACKUP_UPDATE_URL   _T("https://cdn.jsdelivr.net/gh/lifegpc/mpc-hc@ldev/version.txt")
 #define TRAC_URL     _T("https://github.com/lifegpc/bili/issues")
 #define BUGS_URL     _T("https://github.com/lifegpc/bili/issues")
 
