@@ -12643,12 +12643,6 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
                 }
                 if (!use_label) {
                     title = GetFileName();
-                    CString ext = title.Mid(title.ReverseFind('.'));
-                    if (ext == ".mpls" && m_bHasBDMeta) title = GetBDMVMeta().title;
-                    else if (ext != ".mpls") {
-                        m_bHasBDMeta = false;
-                        m_BDMeta.RemoveAll();
-                    }
 
                     if (s.fTitleBarTextTitle) {
                         BeginEnumFilters(m_pGB, pEF, pBF) {
@@ -12661,6 +12655,12 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
                             }
                         }
                         EndEnumFilters;
+                        CString ext = title.Mid(title.ReverseFind('.'));
+                        if (ext == ".mpls" && m_bHasBDMeta) title = GetBDMVMeta().title;
+                        else if (ext != ".mpls") {
+                            m_bHasBDMeta = false;
+                            m_BDMeta.RemoveAll();
+                        }
                     }
                 }
             } else if (GetPlaybackMode() == PM_DVD) {
