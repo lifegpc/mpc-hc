@@ -820,6 +820,7 @@ CMainFrame::CMainFrame()
     , m_dLastVideoScaleFactor(0)
     , m_bExtOnTop(false)
     , m_bIsBDPlay(false)
+    , m_bHasBDMeta(false)
     , watchingFileDialog(false)
     , fileDialogHookHelper(nullptr)
     , delayingFullScreen(false)
@@ -11673,6 +11674,15 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
             break;
         }
         lastOpenFile = fn; //this is only used for skipping to other files, so it may not have been "open"
+        CString ext = fn.Mid(fn.ReverseFind('.'));
+        if (ext == ".mpls") {
+            CString fnn = PathUtils::StripPathOrUrl(fn);
+            CString tempath(fn);
+            tempath.Replace(fnn, _T(""));
+            tempath.Replace(_T("BDMV\\PLAYLIST\\"), _T(""));
+            CHdmvClipInfo clipinfo;
+            m_bHasBDMeta = clipinfo.ReadMeta(tempath, m_BDMeta);
+        }
         HRESULT hr = m_pGB->RenderFile(CStringW(fn), nullptr);
 
         if (FAILED(hr)) {
@@ -12633,6 +12643,12 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
                 }
                 if (!use_label) {
                     title = GetFileName();
+                    CString ext = title.Mid(title.ReverseFind('.'));
+                    if (ext == ".mpls" && m_bHasBDMeta) title = GetBDMVMeta().title;
+                    else if (ext != ".mpls") {
+                        m_bHasBDMeta = false;
+                        m_BDMeta.RemoveAll();
+                    }
 
                     if (s.fTitleBarTextTitle) {
                         BeginEnumFilters(m_pGB, pEF, pBF) {
@@ -17864,6 +17880,8 @@ bool CMainFrame::OpenBD(CString Path)
         if (SUCCEEDED(ClipInfo.FindMainMovie(Path, strPlaylistFile, MainPlaylist, m_MPLSPlaylist))) {
             m_bIsBDPlay = true;
 
+            m_bHasBDMeta = ClipInfo.ReadMeta(Path, m_BDMeta);
+
             if (!InternalMpegSplitter && !ext.IsEmpty() && ext == _T(".bdmv")) {
                 return false;
             } else {
@@ -18506,4 +18524,9 @@ void CMainFrame::OnMouseHWheel(UINT nFlags, short zDelta, CPoint pt) {
         return;
     }
     __super::OnMouseHWheel(nFlags, zDelta, pt);
+}
+
+CHdmvClipInfo::BDMVMeta CMainFrame::GetBDMVMeta()
+{
+    return m_BDMeta.GetHead();
 }
