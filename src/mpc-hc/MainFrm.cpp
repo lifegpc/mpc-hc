@@ -18536,5 +18536,21 @@ void CMainFrame::OnMouseHWheel(UINT nFlags, short zDelta, CPoint pt) {
 
 CHdmvClipInfo::BDMVMeta CMainFrame::GetBDMVMeta()
 {
-    return m_BDMeta.GetHead();
+    if (m_BDMeta.GetCount() == 1) return m_BDMeta.GetHead();
+    else {
+        CAppSettings& s = AfxGetAppSettings();
+        LCID langid = s.language;
+        if (langid == 0) langid = ISOLang::ISO6392ToLcid("eng");
+        POSITION p = m_BDMeta.GetHeadPosition();
+        CHdmvClipInfo::BDMVMeta meta;
+        bool b = true;
+        do {
+            if (p == m_BDMeta.GetTailPosition()) b = false;
+            meta = m_BDMeta.GetNext(p);
+            CW2A temlang(meta.langcode.GetString());
+            LCID lang = ISOLang::ISO6392ToLcid(temlang);
+            if (lang == langid) return meta;
+        } while (b);
+        return m_BDMeta.GetHead();
+    }
 }
