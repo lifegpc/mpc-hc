@@ -12480,7 +12480,7 @@ void CMainFrame::OpenSetupInfoBar(bool bClear /*= true*/)
         if (ext == ".mpls" && m_bHasBDMeta) {
             CHdmvClipInfo::BDMVMeta meta(GetBDMVMeta());
             CString disctitle(meta.title);
-            if (!meta.langcode.IsEmpty()) disctitle += (_T("(") + meta.langcode + _T(")"));
+            if (!meta.langcode.IsEmpty()) disctitle += (_T(" (") + meta.langcode + _T(")"));
             bRecalcLayout |= m_wndInfoBar.SetLine(StrRes(IDS_INFOBAR_DISCTITLE), disctitle);
         }
         UpdateChapterInInfoBar();
