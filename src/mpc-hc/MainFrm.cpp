@@ -12475,6 +12475,14 @@ void CMainFrame::OpenSetupInfoBar(bool bClear /*= true*/)
         EndEnumFilters;
 
         bRecalcLayout |= m_wndInfoBar.SetLine(StrRes(IDS_INFOBAR_TITLE), title);
+        CString fn(GetFileName());
+        CString ext(fn.Mid(fn.ReverseFind('.')));
+        if (ext == ".mpls" && m_bHasBDMeta) {
+            CHdmvClipInfo::BDMVMeta meta(GetBDMVMeta());
+            CString disctitle(meta.title);
+            if (!meta.langcode.IsEmpty()) disctitle += (_T("(") + meta.langcode + _T(")"));
+            bRecalcLayout |= m_wndInfoBar.SetLine(StrRes(IDS_INFOBAR_DISCTITLE), disctitle);
+        }
         UpdateChapterInInfoBar();
         bRecalcLayout |= m_wndInfoBar.SetLine(StrRes(IDS_INFOBAR_AUTHOR), author);
         bRecalcLayout |= m_wndInfoBar.SetLine(StrRes(IDS_INFOBAR_COPYRIGHT), copyright);
