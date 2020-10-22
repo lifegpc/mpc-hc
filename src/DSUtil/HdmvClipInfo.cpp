@@ -474,15 +474,6 @@ HRESULT CHdmvClipInfo::FindMainMovie(LPCTSTR strFolder, CString& strPlaylistFile
     return hr;
 }
 
-//convert UTF8 const char to wstring.
-std::wstring CW2WS(const char* str)
-{
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
-    std::wstring wstrTo( size_needed, 0 );
-    MultiByteToWideChar(CP_UTF8, 0, str, -1, &wstrTo[0], size_needed);
-    return wstrTo;
-}
-
 bool CHdmvClipInfo::ReadMeta(LPCTSTR strFolder, CAtlList<BDMVMeta>& meta)
 {
     bool re = false;
@@ -535,7 +526,7 @@ bool CHdmvClipInfo::ReadMeta(LPCTSTR strFolder, CAtlList<BDMVMeta>& meta)
                         if (title != NULL) {
                             XMLElement* name = title->FirstChildElement("di:name");
                             if (name != NULL) {
-                                Item.title = CW2WS(name->GetText()).c_str();
+                                Item.title = UTF8ToStringW(name->GetText());
                             }
                         }
                     }
