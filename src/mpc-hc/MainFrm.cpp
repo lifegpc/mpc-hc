@@ -835,6 +835,8 @@ CMainFrame::CMainFrame()
     , abRepeatPositionB(0)
     , mediaTypesErrorDlg(nullptr)
     , m_iStreamPosPollerInterval(100)
+    , m_bHasBDMeta()
+    , m_BDMeta()
     , currentAudioLang(_T(""))
     , currentSubLang(_T(""))
 {
