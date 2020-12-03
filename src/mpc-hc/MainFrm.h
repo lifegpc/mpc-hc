@@ -305,7 +305,7 @@ private:
     void SetupVideoStreamsSubMenu();
     void SetupJumpToSubMenus(CMenu* parentMenu = nullptr, int iInsertPos = -1);
     void SetupFavoritesSubMenu();
-    void SetupShadersSubMenu();
+    bool SetupShadersSubMenu();
     void SetupRecentFilesSubMenu();
 
     void SetupNavStreamSelectSubMenu(CMenu& subMenu, UINT id, DWORD dwSelGroup);
@@ -1125,6 +1125,8 @@ protected:
 
     void UpdateUILanguage();
 
+    bool PerformFlipRotate();
+
     bool m_bAltDownClean;
     bool m_bShowingFloatingMenubar;
     virtual void OnShowMenuBar() override {
@@ -1179,6 +1181,9 @@ public:
     CHdmvClipInfo::BDMVMeta GetBDMVMeta();
 
     bool GetDecoderType(CString& type) const;
+    void updateRecentFileListSub(CString fn);
+
+    RecentFileEntry m_current_rfe;
 
 private:
     bool CanSendToYoutubeDL(const CString url);

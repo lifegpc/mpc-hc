@@ -331,7 +331,7 @@ CStringA GetContentType(CString fn, CAtlList<CString>* redir)
 
     fn.Trim();
 
-    if (fn.Find(_T("://")) >= 0) {
+    if (fn.Find(_T("://")) > 1) {
         isurl = true;
         url.CrackUrl(fn);
 
@@ -576,7 +576,7 @@ WORD AssignedToCmd(UINT keyOrMouseValue, bool bIsFullScreen, bool bCheckMouse)
                 if (wc.mouseFS == keyOrMouseValue && (wc.mouseFSVirt & ~FVIRTKEY) == mouseVirt) {
                     assignTo = wc.cmd;
                 }
-            } else if (wc.mouse == keyOrMouseValue && (wc.mouseFSVirt & ~FVIRTKEY) == mouseVirt) {
+            } else if (wc.mouse == keyOrMouseValue && (wc.mouseVirt & ~FVIRTKEY) == mouseVirt) {
                 assignTo = wc.cmd;
             }
         } else if (wc.key == keyOrMouseValue) {

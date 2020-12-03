@@ -139,7 +139,12 @@ bool CYoutubeDLInstance::Run(CString url)
     DWORD exitcode;
     GetExitCodeProcess(proc_info.hProcess, &exitcode);
     if (exitcode) {
-        AfxMessageBox(err.GetBuffer(), MB_ICONERROR, 0);
+        if (err.IsEmpty()) {
+            err.Format(_T("An error occurred while running youtube-dl.exe\n\nprocess exitcode = %d"), exitcode);
+        } else {
+            err = _T("Youtube-dl.exe error message:\n\n") + err;
+        }
+        AfxMessageBox(err, MB_ICONERROR, 0);
         return false;
     }
 
@@ -213,6 +218,9 @@ struct YDLStreamDetails {
     int fps;
 };
 
+#define YDL_EXTRA_LOGGING 0
+#define YDL_LOG_URLS      1
+
 bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool require_video, bool require_audio_only)
 {
     details.protocol = format.HasMember(_T("protocol")) && !format[_T("protocol")].IsNull() ? format[_T("protocol")].GetString() : nullptr;
@@ -223,45 +231,51 @@ bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool re
         details.width     = format.HasMember(_T("width"))  && !format[_T("width")].IsNull()  ? format[_T("width")].GetInt() : 0;
         details.height    = format.HasMember(_T("height")) && !format[_T("height")].IsNull() ? format[_T("height")].GetInt() : 0;
         details.vcodec    = format.HasMember(_T("vcodec")) && !format[_T("vcodec")].IsNull() ? format[_T("vcodec")].GetString() : _T("none");
-        details.has_video = details.vcodec != _T("none");
+        details.has_video = details.vcodec != _T("none") || (details.width > 0) || (details.height > 0);
         details.acodec    = format.HasMember(_T("acodec")) && !format[_T("acodec")].IsNull() ? format[_T("acodec")].GetString() : _T("none");
         details.has_audio = details.acodec != _T("none");
-        if (details.has_video || details.has_audio) {
-            details.vbr = details.has_video && format.HasMember(_T("vbr")) && !format[_T("vbr")].IsNull() ? (int) format[_T("vbr")].GetFloat() : 0;
-            details.abr = details.has_audio && format.HasMember(_T("abr")) && !format[_T("abr")].IsNull() ? (int) format[_T("abr")].GetFloat() : 0;
-            if (details.vbr == 0 && details.has_video) {
-                details.vbr = format.HasMember(_T("tbr")) && !format[_T("tbr")].IsNull() ? (int) format[_T("tbr")].GetFloat() : 0;
-            }
-            if (details.abr == 0 && details.has_audio) {
-                details.abr = format.HasMember(_T("tbr")) && !format[_T("tbr")].IsNull() ? (int) format[_T("tbr")].GetFloat() : 0;
-            }
-        } else {
-            // format details unknown, make assumption
-            details.has_video = (details.width > 0) || (details.height > 0);
-            details.has_audio = true;
-        }
-        details.fps = details.has_video && format.HasMember(_T("fps")) && !format[_T("fps")].IsNull() ? format[_T("fps")].GetInt() : 0;
 
-        if (require_video && !details.has_video || require_audio_only && (!details.has_audio || details.has_video)) return false;
+        if (!details.has_video && !details.has_audio) {
+            #if YDL_EXTRA_LOGGING
+            YDL_LOG(_T("ignore url without audio/video details = %s"), details.url);
+            #endif
+            return false;
+        }
+        if (require_video && !details.has_video) {
+            #if YDL_EXTRA_LOGGING
+            YDL_LOG(_T("ignore url because it has no video: %s"), details.url);
+            #endif
+            return false;
+        }
+        if (require_audio_only && (!details.has_audio || details.has_video)) {
+            #if YDL_EXTRA_LOGGING
+            YDL_LOG(_T("ignore url because it is not audio only (vcodec=%s): %s"), details.vcodec, details.url);
+            #endif
+            return false;
+        }
 
-        if (details.has_video) {
-            #if 0
-            YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d url=%s"), details.vcodec, details.width, details.height, details.fps, details.vbr, details.url);
-            #else
-            YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d"), details.vcodec, details.width, details.height, details.fps, details.vbr);
-            #endif
+        details.vbr = details.has_video && format.HasMember(_T("vbr")) && !format[_T("vbr")].IsNull() ? (int)format[_T("vbr")].GetFloat() : 0;
+        if (details.vbr == 0 && details.has_video) {
+            details.vbr = format.HasMember(_T("tbr")) && !format[_T("tbr")].IsNull() ? (int)format[_T("tbr")].GetFloat() : 0;
         }
-        else {
-            #if 0
-            YDL_LOG(_T("acodec=%s abr=%d url=%s"), details.acodec, details.abr, details.url);
-            #else
-            YDL_LOG(_T("acodec=%s abr=%d"), details.acodec, details.abr);
-            #endif
+        details.fps = format.HasMember(_T("fps")) && !format[_T("fps")].IsNull() ? (int)format[_T("fps")].GetDouble() : 0;
+        details.abr = details.has_audio && format.HasMember(_T("abr")) && !format[_T("abr")].IsNull() ? (int)format[_T("abr")].GetFloat() : 0;
+        if (details.abr == 0 && details.has_audio) {
+            details.abr = format.HasMember(_T("tbr")) && !format[_T("tbr")].IsNull() ? (int)format[_T("tbr")].GetFloat() : 0;
         }
+
+        #if YDL_LOG_URLS
+        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d url=%s"), details.vcodec, details.width, details.height, details.fps, details.vbr, details.acodec, details.abr, details.url);
+        #else
+        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d"), details.vcodec, details.width, details.height, details.fps, details.vbr, details.acodec, details.abr);
+        #endif
+
         return true;
     }
     else {
-        //YDL_LOG(_T("skip dash url = %s"), format[_T("url")].GetString());
+        #if 0
+        YDL_LOG(_T("ignore dash url = %s"), format[_T("url")].GetString());
+        #endif
     }
     return false;
 }
@@ -473,11 +487,20 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
             return false;
         }
 
-        if (pJSON->d.HasMember(_T("title"))) {
+        if (pJSON->d.HasMember(_T("title")) && !pJSON->d[_T("title")].IsNull()) {
             stream.title = pJSON->d[_T("title")].GetString();
         } else {
             stream.title = _T("");
         }
+
+        if (pJSON->d.HasMember(_T("series")) && !pJSON->d[_T("series")].IsNull()) stream.series = pJSON->d[_T("series")].GetString();
+        if (pJSON->d.HasMember(_T("season")) && !pJSON->d[_T("season")].IsNull()) stream.season = pJSON->d[_T("season")].GetString();
+        if (pJSON->d.HasMember(_T("season_number")) && !pJSON->d[_T("season_number")].IsNull()) stream.season_number = pJSON->d[_T("season_number")].GetInt();
+        if (pJSON->d.HasMember(_T("season_id")) && !pJSON->d[_T("season_id")].IsNull()) stream.season_id = pJSON->d[_T("season_id")].GetString();
+        if (pJSON->d.HasMember(_T("episode")) && !pJSON->d[_T("episode")].IsNull()) stream.episode = pJSON->d[_T("episode")].GetString();
+        if (pJSON->d.HasMember(_T("episode_number")) && !pJSON->d[_T("episode_number")].IsNull()) stream.episode_number = pJSON->d[_T("episode_number")].GetInt();
+        if (pJSON->d.HasMember(_T("episode_id")) && !pJSON->d[_T("episode_id")].IsNull()) stream.episode_id = pJSON->d[_T("episode_id")].GetString();
+        if (pJSON->d.HasMember(_T("webpage_url")) && !pJSON->d[_T("webpage_url")].IsNull()) stream.webpage_url = pJSON->d[_T("webpage_url")].GetString();
 
         // detect generic http link
         if (extractor == _T("generic")) {
@@ -511,20 +534,29 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
 
             for (rapidjson::SizeType i = 0; i < entries.Size(); i++) {
                 YDL_LOG(_T("Playlist entry %d"), i);
-                if (filterVideo(entries[i][_T("formats")], ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
+                const Value& entry = entries[i];
+                if (filterVideo(entry[_T("formats")], ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
                     stream.video_url = ydl_sd.url;
-                    stream.title = entries[i][_T("title")].GetString();
                     stream.audio_url = _T("");
+                    if (entry.HasMember(_T("title")) && !entry[_T("title")].IsNull()) stream.title = entry[_T("title")].GetString();
+                    if (entry.HasMember(_T("series")) && !entry[_T("series")].IsNull()) stream.series = entry[_T("series")].GetString();
+                    if (entry.HasMember(_T("season")) && !entry[_T("season")].IsNull()) stream.season = entry[_T("season")].GetString();
+                    if (entry.HasMember(_T("season_number")) && !entry[_T("season_number")].IsNull()) stream.season_number = entry[_T("season_number")].GetInt();
+                    if (entry.HasMember(_T("season_id")) && !entry[_T("season_id")].IsNull()) stream.season_id = entry[_T("season_id")].GetString();
+                    if (entry.HasMember(_T("episode")) && !entry[_T("episode")].IsNull()) stream.episode = entry[_T("episode")].GetString();
+                    if (entry.HasMember(_T("episode_number")) && !entry[_T("episode_number")].IsNull()) stream.episode_number = entry[_T("episode_number")].GetInt();
+                    if (entry.HasMember(_T("episode_id")) && !entry[_T("episode_id")].IsNull()) stream.episode_id = entry[_T("episode_id")].GetString();
+                    if (entry.HasMember(_T("webpage_url")) && !entry[_T("webpage_url")].IsNull()) stream.webpage_url = entry[_T("webpage_url")].GetString();
                     if (ydl_sd.has_video && !ydl_sd.has_audio) {
-                        if (filterAudio(entries[i][_T("formats")], ydl_sd)) {
+                        if (filterAudio(entry[_T("formats")], ydl_sd)) {
                             stream.audio_url = ydl_sd.url;
                         }
                     }
                     streams.AddTail(stream);
                 } else {
-                    if (filterAudio(entries[i][_T("formats")], ydl_sd)) {
+                    if (filterAudio(entry[i][_T("formats")], ydl_sd)) {
                         stream.audio_url = ydl_sd.url;
-                        stream.title = entries[i][_T("title")].GetString();
+                        stream.title = entry[_T("title")].GetString();
                         stream.video_url = _T("");
                         streams.AddTail(stream);
                     }
