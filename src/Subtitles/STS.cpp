@@ -35,6 +35,7 @@
 #include <regex>
 #include "SSASub.h"
 #include "../mpc-hc/SubtitlesProvidersUtils.h"
+#include "../DSUtil/ISOLang.h"
 
 struct htmlcolor {
     LPCTSTR name;
@@ -2835,6 +2836,8 @@ bool CSimpleTextSubtitle::Open(CString url, int CharSet, CString provider, CStri
 
     CString name;
     name.Format(_T("%s.%s.%s"), videoName, lang, extt);
+    CStringA langt(lang);
+    m_lcid = ISOLang::ISO6391ToLcid(langt);
     return Open((BYTE*)data.c_str(), data.length(), CharSet, name);
 }
 
