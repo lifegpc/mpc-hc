@@ -23,8 +23,6 @@
 #include "mplayerc.h"
 #include "logger.h"
 
-typedef rapidjson::GenericValue<rapidjson::UTF16<>> Value;
-
 struct CUtf16JSON {
     rapidjson::GenericDocument<rapidjson::UTF16<>> d;
 };
@@ -59,7 +57,7 @@ bool CYoutubeDLInstance::Run(CString url)
 
     YDL_LOG(url);
 
-    CString args = "youtube-dl -J \"" + url + "\"";
+    CString args = "youtube-dl -J --all-subs \"" + url + "\"";
 
     ZeroMemory(&proc_info, sizeof(PROCESS_INFORMATION));
     ZeroMemory(&startup_info, sizeof(STARTUPINFO));
@@ -505,6 +503,7 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
         if (pJSON->d.HasMember(_T("episode_number")) && !pJSON->d[_T("episode_number")].IsNull()) stream.episode_number = pJSON->d[_T("episode_number")].GetInt();
         if (pJSON->d.HasMember(_T("episode_id")) && !pJSON->d[_T("episode_id")].IsNull()) stream.episode_id = pJSON->d[_T("episode_id")].GetString();
         if (pJSON->d.HasMember(_T("webpage_url")) && !pJSON->d[_T("webpage_url")].IsNull()) stream.webpage_url = pJSON->d[_T("webpage_url")].GetString();
+        if (pJSON->d.HasMember(_T("subtitles")) && !pJSON->d[_T("subtitles")].IsNull() && pJSON->d[_T("subtitles")].IsObject()) loadSub(pJSON->d[_T("subtitles")], stream.subtitles);
 
         // detect generic http link
         if (extractor == _T("generic")) {
@@ -551,6 +550,9 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
                     if (entry.HasMember(_T("episode_number")) && !entry[_T("episode_number")].IsNull()) stream.episode_number = entry[_T("episode_number")].GetInt();
                     if (entry.HasMember(_T("episode_id")) && !entry[_T("episode_id")].IsNull()) stream.episode_id = entry[_T("episode_id")].GetString();
                     if (entry.HasMember(_T("webpage_url")) && !entry[_T("webpage_url")].IsNull()) stream.webpage_url = entry[_T("webpage_url")].GetString();
+                    if (entry.HasMember(_T("subtitles")) && !entry[_T("subtitles")].IsNull() && entry[_T("subtitles")].IsObject()) {
+                        loadSub(entry[_T("subtitles")], stream.subtitles);
+                    }
                     if (ydl_sd.has_video && !ydl_sd.has_audio) {
                         if (filterAudio(entry[_T("formats")], ydl_sd)) {
                             stream.audio_url = ydl_sd.url;
@@ -580,4 +582,25 @@ bool CYoutubeDLInstance::loadJSON()
     }
     bIsPlaylist = pJSON->d.FindMember(_T("entries")) != pJSON->d.MemberEnd();
     return true;
+}
+
+void CYoutubeDLInstance::loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs) {
+    subs.RemoveAll();
+    for (Value::ConstMemberIterator iter = obj.MemberBegin(); iter != obj.MemberEnd(); ++iter) {
+        CString lang(iter->name.GetString());
+        if (iter->value.IsArray()) {
+            const Value& arr = obj[(LPCTSTR)lang];
+            for (int i = 0; i < arr.Size(); i++) {
+                const Value& dict = arr[i];
+                YDLSubInfo sub;
+                sub.lang = lang;
+                if (dict.HasMember(_T("ext")) && !dict[_T("ext")].IsNull()) sub.ext = dict[_T("ext")].GetString();
+                if (dict.HasMember(_T("url")) && !dict[_T("url")].IsNull()) sub.url = dict[_T("url")].GetString();
+                // now only handle subtitles have url
+                if (!sub.url.IsEmpty()) {
+                    if (sub.ext.IsEmpty() || sub.ext == _T("vtt") || sub.ext == _T("ass") || sub.ext == _T("srt")) subs.AddTail(sub);
+                }
+            }
+        }
+    }
 }

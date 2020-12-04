@@ -13363,6 +13363,17 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
             while (pos) {
                 LoadSubtitle(pOMD->subs.GetNext(pos), nullptr, true);
             }
+
+            auto* pli = m_wndPlaylistBar.GetCur();
+            if (pli != nullptr && pli->m_bYoutubeDL) {
+                int m = pli->m_label.ReverseFind(*_T(" ("));
+                CString videoName(pli->m_label);
+                if (m > 0) videoName = pli->m_label.Left(m);
+                POSITION pos2 = pli->m_ydl_subs.GetHeadPosition();
+                while (pos2) {
+                    LoadSubtitle(pli->m_ydl_subs.GetNext(pos2), videoName);
+                }
+            }
         }
         checkAborted();
 
@@ -15143,6 +15154,53 @@ bool CMainFrame::LoadSubtitle(CString fn, SubtitleInput* pSubInput /*= nullptr*/
 
         if (pSubInput) {
             *pSubInput = subInput;
+        }
+    }
+
+    return !!pSubStream;
+}
+
+bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString videoName) {
+    CAppSettings& s = AfxGetAppSettings();
+    CComQIPtr<ISubStream> pSubStream;
+
+    if (!s.IsISRAutoLoadEnabled() && (FindFilter(CLSID_VSFilter, m_pGB) || FindFilter(CLSID_XySubFilter, m_pGB))) {
+        // Prevent ISR from loading if VSFilter is already in graph.
+        // TODO: Support VSFilter natively (see ticket #4122)
+        // Note that this doesn't affect ISR auto-loading if any sub renderer force loading itself into the graph.
+        // VSFilter like filters can be blocked when building the graph and ISR auto-loading is enabled but some
+        // users don't want that.
+        return false;
+    }
+
+    if (GetPlaybackMode() == PM_FILE && !s.fDisableInternalSubtitles && !FindFilter(__uuidof(CTextPassThruFilter), m_pGB)) {
+        // Add TextPassThru filter if it isn't already in the graph. (i.e ISR hasn't been loaded before)
+        // This will load all embedded subtitle tracks when user triggers ISR (load external subtitle file) for the first time.
+        AddTextPassThruFilter();
+    }
+
+    CAutoPtr<CRenderedTextSubtitle> pRTS(DEBUG_NEW CRenderedTextSubtitle(&m_csSubLock));
+    if (pRTS) {
+#if USE_LIBASS
+        SubRendererSettings srs = AfxGetAppSettings().GetSubRendererSettings();
+        pRTS->SetSubRenderSettings(srs);
+#endif
+        pRTS->SetDefaultStyle(s.subtitlesDefStyle);
+        if (pRTS->Open(sub.url, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, sub.ext) && pRTS->GetStreamCount() > 0) {
+#if USE_LIBASS
+            pRTS->SetFilterGraph(m_pGB);
+#endif
+            pSubStream = pRTS.Detach();
+        }
+    }
+
+    if (pSubStream) {
+        SubtitleInput subInput(pSubStream);
+        m_ExternalSubstreams.push_back(pSubStream);
+        m_pSubStreams.AddTail(subInput);
+
+        if (!m_posFirstExtSub) {
+            m_posFirstExtSub = m_pSubStreams.GetTailPosition();
         }
     }
 
@@ -18752,10 +18810,10 @@ bool CMainFrame::ProcessYoutubeDLURL(CString url, bool append, bool replace)
         CString url2(url);
         if (streams.GetCount() > 1 && !stream.webpage_url.IsEmpty()) url2 = stream.webpage_url;
         if (replace) {
-            m_wndPlaylistBar.ReplaceCurrentItem(filenames, nullptr, title + " (" + ShortenURL(url2, targetlen, true) + ")", url2);
+            m_wndPlaylistBar.ReplaceCurrentItem(filenames, nullptr, title + " (" + ShortenURL(url2, targetlen, true) + ")", url2, _T(""), &stream.subtitles);
             break;
         } else {
-            m_wndPlaylistBar.Append(filenames, false, nullptr, title + " (" + ShortenURL(url2, targetlen, true) + ")", url2);
+            m_wndPlaylistBar.Append(filenames, false, nullptr, title + " (" + ShortenURL(url2, targetlen, true) + ")", url2, _T(""), &stream.subtitles);
         }
     }
 

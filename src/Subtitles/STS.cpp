@@ -34,6 +34,7 @@
 #include  <comutil.h>
 #include <regex>
 #include "SSASub.h"
+#include "../mpc-hc/SubtitlesProvidersUtils.h"
 
 struct htmlcolor {
     LPCTSTR name;
@@ -2797,6 +2798,44 @@ bool CSimpleTextSubtitle::Open(CString fn, int CharSet, CString name, CString vi
     }
 
     return Open(&f, CharSet, name);
+}
+
+bool CSimpleTextSubtitle::Open(CString url, int CharSet, CString provider, CString lang, CString videoName, CString ext) {
+    Empty();
+
+    /*CWebTextFile f(CTextFile::UTF8);
+    if (!f.Open(url)) {
+        return false;
+    }*/ //Seems only buffer part of file.
+
+    SubtitlesProvidersUtils::stringMap s{};
+    DWORD dwStatusCode;
+    CT2CA tem(url);
+    std::string tem2(tem);
+    std::string data("");
+    SubtitlesProvidersUtils::StringDownload(tem2, s, data, true, &dwStatusCode);
+    if (dwStatusCode != 200) {
+        return false;
+    }
+
+    m_provider = provider;
+    CString extt(ext);
+    if (extt.IsEmpty()) {
+        int m2(url.ReverseFind(*_T("?")));
+        int m3(url.ReverseFind(*_T("#")));
+        int m = -1;
+        if (m2 > -1 && m3 > -1) m = std::min(m2, m3);
+        else if (m2 > -1) m = m2;
+        else if (m3 > -1) m = m3;
+        CString temp(url);
+        if (m > 0) temp = url.Left(m);
+        m = temp.ReverseFind(*_T("."));
+        if (m >= 0) extt = temp.Mid(m + 1);
+    }
+
+    CString name;
+    name.Format(_T("%s.%s.%s"), videoName, lang, extt);
+    return Open((BYTE*)data.c_str(), data.length(), CharSet, name);
 }
 
 bool CSimpleTextSubtitle::Open(CTextFile* f, int CharSet, CString name) {
