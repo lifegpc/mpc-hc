@@ -503,7 +503,7 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams, YDLPlay
         if (pJSON->d.HasMember(_T("episode_number")) && !pJSON->d[_T("episode_number")].IsNull()) stream.episode_number = pJSON->d[_T("episode_number")].GetInt();
         if (pJSON->d.HasMember(_T("episode_id")) && !pJSON->d[_T("episode_id")].IsNull()) stream.episode_id = pJSON->d[_T("episode_id")].GetString();
         if (pJSON->d.HasMember(_T("webpage_url")) && !pJSON->d[_T("webpage_url")].IsNull()) stream.webpage_url = pJSON->d[_T("webpage_url")].GetString();
-        if (pJSON->d.HasMember(_T("subtitles")) && !pJSON->d[_T("subtitles")].IsNull() && pJSON->d[_T("subtitles")].IsObject()) loadSub(pJSON->d[_T("subtitles")], stream.subtitles);
+        if (s.bUseSubsFromYDL && pJSON->d.HasMember(_T("subtitles")) && !pJSON->d[_T("subtitles")].IsNull() && pJSON->d[_T("subtitles")].IsObject()) loadSub(pJSON->d[_T("subtitles")], stream.subtitles);
 
         // detect generic http link
         if (extractor == _T("generic")) {
@@ -555,7 +555,7 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams, YDLPlay
                     if (entry.HasMember(_T("episode_number")) && !entry[_T("episode_number")].IsNull()) stream.episode_number = entry[_T("episode_number")].GetInt();
                     if (entry.HasMember(_T("episode_id")) && !entry[_T("episode_id")].IsNull()) stream.episode_id = entry[_T("episode_id")].GetString();
                     if (entry.HasMember(_T("webpage_url")) && !entry[_T("webpage_url")].IsNull()) stream.webpage_url = entry[_T("webpage_url")].GetString();
-                    if (entry.HasMember(_T("subtitles")) && !entry[_T("subtitles")].IsNull() && entry[_T("subtitles")].IsObject()) {
+                    if (s.bUseSubsFromYDL && entry.HasMember(_T("subtitles")) && !entry[_T("subtitles")].IsNull() && entry[_T("subtitles")].IsObject()) {
                         loadSub(entry[_T("subtitles")], stream.subtitles);
                     }
                     if (ydl_sd.has_video && !ydl_sd.has_audio) {

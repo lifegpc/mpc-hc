@@ -232,6 +232,7 @@ CAppSettings::CAppSettings()
     , bRenderSubtitlesUsingLibass(false)
     , bAddLangCodeWhenSaveSubtitles(true)
     , bUseTitleInRecentFileList(true)
+    , bUseSubsFromYDL(true)
 {
     // Internal source filter
 #if INTERNAL_SOURCEFILTER_CDDA
@@ -1170,6 +1171,7 @@ void CAppSettings::SaveSettings()
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_LANG_STATUSBAR, bShowLangInStatusbar);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES, bAddLangCodeWhenSaveSubtitles);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST, bUseTitleInRecentFileList);
+    pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_USE_SUBS_FROM_YDL, bUseSubsFromYDL);
 
     pApp->FlushProfile();
 }
@@ -1978,6 +1980,7 @@ void CAppSettings::LoadSettings()
 
     bAddLangCodeWhenSaveSubtitles = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES, TRUE);
     bUseTitleInRecentFileList = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST, TRUE);
+    bUseSubsFromYDL = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_USE_SUBS_FROM_YDL, TRUE);
 
     // GUI theme can be used now
     static_cast<CMPlayerCApp*>(AfxGetApp())->m_bThemeLoaded = bMPCTheme;

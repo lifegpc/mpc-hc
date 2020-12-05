@@ -177,6 +177,7 @@ void CPPageAdvanced::InitSettings()
     addBoolItem(LANG_STATUSBAR, IDS_RS_SHOW_LANG_STATUSBAR, false, s.bShowLangInStatusbar, _T("Display current audio and subtitle language in status bar"));
     addBoolItem(ADD_LANGCODE_WHEN_SAVE_SUBTITLES, IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES, true, s.bAddLangCodeWhenSaveSubtitles, _T("When save the subtitles file, the language code (if available) text will be added to suggested file name by default."));
     addBoolItem(USE_TITLE_IN_RECENT_FILE_LIST, IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST, true, s.bUseTitleInRecentFileList, _T("Use title in recent file list."));
+    addBoolItem(USE_SUBS_FROM_YDL, IDS_RS_USE_SUBS_FROM_YDL, true, s.bUseSubsFromYDL, _T("Use subtitles from Youtube-DL."));
 }
 
 BOOL CPPageAdvanced::OnApply()

@@ -13394,7 +13394,7 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
             }
 
             auto* pli = m_wndPlaylistBar.GetCur();
-            if (pli != nullptr && pli->m_bYoutubeDL) {
+            if (s.bUseSubsFromYDL && pli != nullptr && pli->m_bYoutubeDL) {
                 int m = pli->m_label.ReverseFind(*_T(" ("));
                 CString videoName(pli->m_label);
                 if (m > 0) videoName = pli->m_label.Left(m);
