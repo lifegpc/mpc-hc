@@ -707,10 +707,10 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
             } else if (key == _T("label")) {
                 pli[i].m_label = value;
             } else if (key == _T("filename")) {
-                value = CombinePath(base, value);
+                if (!PathUtils::IsURL(value)) value = CombinePath(base, value);
                 pli[i].m_fns.AddTail(value);
             } else if (key == _T("subtitle")) {
-                value = CombinePath(base, value);
+                if (!PathUtils::IsURL(value)) value = CombinePath(base, value);
                 pli[i].m_subs.AddTail(value);
             } else if (key == _T("ydlSourceURL")) {
                 pli[i].m_ydlSourceURL = value;
@@ -1137,6 +1137,16 @@ void CPlayerPlaylistBar::Randomize()
     m_pl.Randomize();
     SetupList();
     SavePlaylist();
+}
+
+void CPlayerPlaylistBar::UpdateLabel(CString in) {
+    if (!m_pl.GetPos()) {
+        return;
+    }
+    CPlaylistItem& m = m_pl.GetAt(m_pl.GetPos());
+    m.m_label = in;
+    m_pl.SetAt(m_pl.GetPos(), m);
+    Refresh();
 }
 
 OpenMediaData* CPlayerPlaylistBar::GetCurOMD(REFERENCE_TIME rtStart)

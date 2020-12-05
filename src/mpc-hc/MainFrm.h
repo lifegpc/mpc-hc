@@ -1187,6 +1187,7 @@ private:
     bool CanSendToYoutubeDL(const CString url);
     bool ProcessYoutubeDLURL(CString url, bool append, bool replace = false);
     bool DownloadWithYoutubeDL(CString url, CString filename);
+    bool IsOnYDLWhitelist(CString url);
 
     bool watchingFileDialog;
     HWND fileDialogHandle;

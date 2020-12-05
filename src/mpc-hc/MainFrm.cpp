@@ -4199,12 +4199,16 @@ void CMainFrame::OnFileOpenmedia()
 
     CAtlList<CString> filenames;
 
-    if (CanSendToYoutubeDL(dlg.GetFileNames().GetHead())
-            && ProcessYoutubeDLURL(dlg.GetFileNames().GetHead(), dlg.GetAppendToPlaylist())) {
-        if (!dlg.GetAppendToPlaylist()) {
-            OpenCurPlaylistItem();
+    if (CanSendToYoutubeDL(dlg.GetFileNames().GetHead())) {
+        if (ProcessYoutubeDLURL(dlg.GetFileNames().GetHead(), dlg.GetAppendToPlaylist())) {
+            if (!dlg.GetAppendToPlaylist()) {
+                OpenCurPlaylistItem();
+            }
+            return;
+        } else if (IsOnYDLWhitelist(dlg.GetFileNames().GetHead())) {
+            // don't bother trying to open this website URL directly
+            return;
         }
-        return;
     }
 
     filenames.AddHeadList(&dlg.GetFileNames());
@@ -4688,6 +4692,9 @@ void CMainFrame::OnDropFiles(CAtlList<CString>& slFiles, DROPEFFECT dropEffect)
             if (!bAppend) {
                 OpenCurPlaylistItem();
             }
+            return;
+        } else if (IsOnYDLWhitelist(slFiles.GetHead())) {
+            // don't bother trying to open this website URL directly
             return;
         }
     }
@@ -10009,6 +10016,9 @@ void CMainFrame::OnRecentFile(UINT nID)
         if (ProcessYoutubeDLURL(fns.GetHead(), false)) {
             OpenCurPlaylistItem();
             return;
+        } else if (IsOnYDLWhitelist(fns.GetHead())) {
+            // don't bother trying to open this website URL directly
+            return;
         }
     }
 
@@ -12849,6 +12859,25 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
                     if (pli->m_label && !pli->m_label.IsEmpty()) {
                         title = pli->m_label;
                         use_label = true;
+                    }
+                    if (!pli->m_bYoutubeDL) {
+                        CString temp;
+                        BeginEnumFilters(m_pGB, pEF, pBF) {
+                            if (CComQIPtr<IAMMediaContent, &IID_IAMMediaContent> pAMMC = pBF) {
+                                CComBSTR bstr;
+                                if (SUCCEEDED(pAMMC->get_Title(&bstr)) && bstr.Length()) {
+                                    temp = CString(bstr.m_str);
+                                    break;
+                                }
+                            }
+                        }
+                        EndEnumFilters;
+                        if (!temp.IsEmpty() && temp != pli->m_label) {
+                            title = temp;
+                            use_label = true;
+                            m_wndPlaylistBar.UpdateLabel(temp);
+                            m_current_rfe.title = temp;
+                        }
                     }
                 }
                 if (!use_label) {
@@ -18696,6 +18725,15 @@ static const CString ydl_blacklist[] = {
     _T("saunalahti.fi/")
 };
 
+bool CMainFrame::IsOnYDLWhitelist(CString url) {
+    for (int i = 0; i < _countof(ydl_whitelist); i++) {
+        if (url.Find(ydl_whitelist[i]) >= 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool CMainFrame::CanSendToYoutubeDL(const CString url)
 {
     if (url.Left(4).MakeLower() == _T("http") && AfxGetAppSettings().bUseYDL) {
@@ -18707,10 +18745,8 @@ bool CMainFrame::CanSendToYoutubeDL(const CString url)
         }
 
         // Whitelist: popular supported sites
-        for (int i = 0; i < _countof(ydl_whitelist); i++) {
-            if (url.Find(ydl_whitelist[i], 7) > 0) {
-                return true;
-            }
+        if (IsOnYDLWhitelist(url)) {
+            return true;
         }
 
         // Blacklist: unsupported sites where YDL causes an error or long delay
@@ -18748,13 +18784,14 @@ bool CMainFrame::ProcessYoutubeDLURL(CString url, bool append, bool replace)
     CAtlList<CYoutubeDLInstance::YDLStreamURL> streams;
     CAtlList<CString> filenames;
     CYoutubeDLInstance ydl;
+    CYoutubeDLInstance::YDLPlaylistInfo listinfo;
 
     m_wndStatusBar.SetStatusMessage(ResStr(IDS_CONTROLS_YOUTUBEDL));
 
     if (!ydl.Run(url)) {
         return false;
     }
-    if (!ydl.GetHttpStreams(streams)) {
+    if (!ydl.GetHttpStreams(streams, listinfo)) {
         return false;
     }
 
@@ -18832,6 +18869,10 @@ bool CMainFrame::ProcessYoutubeDLURL(CString url, bool append, bool replace)
             }
             else if (!h.season.IsEmpty()) {
                 r.title = h.season;
+            }
+            else if (!listinfo.title.IsEmpty()) {
+                if (!listinfo.uploader.IsEmpty()) r.title.Format(_T("%s - %s"), listinfo.uploader, listinfo.title);
+                else r.title = listinfo.title;
             }
             else r.title = f_title;
         }
