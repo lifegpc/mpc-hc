@@ -15192,6 +15192,9 @@ bool CMainFrame::LoadSubtitle(CString fn, SubtitleInput* pSubInput /*= nullptr*/
 bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString videoName) {
     CAppSettings& s = AfxGetAppSettings();
     CComQIPtr<ISubStream> pSubStream;
+    CAtlList<CString> prefrelist;
+    if (!s.sYDLSubsPreference.IsEmpty()) Explode(s.sYDLSubsPreference, prefrelist, ' ');
+    if (!s.sYDLSubsPreference.IsEmpty() && !CYoutubeDLInstance::isPrefer(prefrelist, sub.lang)) return false;
 
     if (!s.IsISRAutoLoadEnabled() && (FindFilter(CLSID_VSFilter, m_pGB) || FindFilter(CLSID_XySubFilter, m_pGB))) {
         // Prevent ISR from loading if VSFilter is already in graph.

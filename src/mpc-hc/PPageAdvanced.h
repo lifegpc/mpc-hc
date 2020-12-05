@@ -212,7 +212,8 @@ private:
         LANG_STATUSBAR,
         ADD_LANGCODE_WHEN_SAVE_SUBTITLES,
         USE_TITLE_IN_RECENT_FILE_LIST,
-        USE_SUBS_FROM_YDL
+        USE_SUBS_FROM_YDL,
+        YDL_SUBS_PREFERENCE
     };
 
     enum {

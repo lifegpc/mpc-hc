@@ -590,9 +590,13 @@ bool CYoutubeDLInstance::loadJSON()
 }
 
 void CYoutubeDLInstance::loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs) {
+    auto& s = AfxGetAppSettings();
+    CAtlList<CString> prefrelist;
+    if (!s.sYDLSubsPreference.IsEmpty()) Explode(s.sYDLSubsPreference, prefrelist, ' ');
     subs.RemoveAll();
     for (Value::ConstMemberIterator iter = obj.MemberBegin(); iter != obj.MemberEnd(); ++iter) {
         CString lang(iter->name.GetString());
+        if (!s.sYDLSubsPreference.IsEmpty() && !isPrefer(prefrelist, lang)) continue;
         if (iter->value.IsArray()) {
             const Value& arr = obj[(LPCTSTR)lang];
             for (int i = 0; i < arr.Size(); i++) {
@@ -608,4 +612,13 @@ void CYoutubeDLInstance::loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs) {
             }
         }
     }
+}
+
+bool CYoutubeDLInstance::isPrefer(CAtlList<CString>& list, CString& lang) {
+    POSITION pos = list.GetHeadPosition();
+    while (pos) {
+        CString la = list.GetNext(pos);
+        if (lang.Left(la.GetLength()) == la) return true;
+    }
+    return false;
 }

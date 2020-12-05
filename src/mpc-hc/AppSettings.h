@@ -865,6 +865,7 @@ public:
     bool bAddLangCodeWhenSaveSubtitles;
     bool bUseTitleInRecentFileList;
     bool bUseSubsFromYDL;
+    CString sYDLSubsPreference;
 
 private:
     struct FilterKey {

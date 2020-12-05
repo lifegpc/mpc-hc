@@ -90,6 +90,7 @@ public:
 
     bool Run(CString url);
     bool GetHttpStreams(CAtlList<YDLStreamURL>& streams, YDLPlaylistInfo& info);
+    static bool isPrefer(CAtlList<CString>& list, CString& lang);
 
 private:
     CUtf16JSON* pJSON;

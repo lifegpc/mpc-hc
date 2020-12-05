@@ -92,6 +92,7 @@
 #define IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES _T("AddLanguageCodeWhenSaveSubtitles")
 #define IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST    _T("UseTitleInRecentFileList")
 #define IDS_RS_USE_SUBS_FROM_YDL            _T("UseSubsFromYDL")
+#define IDS_RS_YDL_SUBS_PREFERENCE          _T("YDLSubsPreference")
 
 // Audio
 #define IDS_RS_VOLUME                       _T("Volume")
