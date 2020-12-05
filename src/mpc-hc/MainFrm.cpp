@@ -11826,7 +11826,15 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
                 RecentFileEntry r;
                 r.fns.AddTail(fn);
                 CPlaylistItem* m_pli = m_wndPlaylistBar.GetCur();
-                if (!m_pli->m_label.IsEmpty()) r.title = m_pli->m_label;
+                if (!m_pli->m_label.IsEmpty()) {
+                    if (!m_pli->m_bYoutubeDL || fn == m_pli->m_ydlSourceURL) r.title = m_pli->m_label;
+                    else {
+                        CString videoName(m_pli->m_label);
+                        int m = m_pli->m_label.ReverseFind(*_T(" ("));
+                        if (m > 0) videoName = m_pli->m_label.Left(m);
+                        r.title = videoName;
+                    }
+                }
                 else {
                     CString title;
                     BeginEnumFilters(m_pGB, pEF, pBF) {
@@ -11844,6 +11852,10 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
                 if (!m_pli->m_bYoutubeDL && m_pli->m_fns.GetCount() > 1) {
                     r.fns.RemoveAll();
                     r.fns.AddHeadList(&m_pli->m_fns);
+                }
+                else if (m_pli->m_bYoutubeDL) {
+                    r.fns.RemoveAll();
+                    r.fns.AddTail(m_pli->m_ydlSourceURL);
                 }
                 if (m_pli->m_cue) r.cue = m_pli->m_cue_filename;
                 if (m_pli->m_subs.GetCount() > 0) {
@@ -18097,7 +18109,7 @@ void CMainFrame::UpdateControlState(UpdateControlTarget target)
                     m_wndView.LoadImg(internalCover);
                     m_currentCoverPath = filename;
                     m_currentCoverAuthor = author;
-                } else if (!pli->m_cover.IsEmpty() && CPath(pli->m_cover).FileExists()) {
+                } else if (pli && !pli->m_cover.IsEmpty() && CPath(pli->m_cover).FileExists()) {
                     m_wndView.LoadImg(pli->m_cover);
                 } else if (!filedir.IsEmpty() && (m_currentCoverPath != filedir || m_currentCoverAuthor != author || currentCoverIsFileArt)) {
                     m_wndView.LoadImg(CoverArt::FindExternal(filename_no_ext, filedir, author, currentCoverIsFileArt));
@@ -18719,6 +18731,7 @@ LRESULT CMainFrame::OnGetSubtitles(WPARAM, LPARAM lParam)
 
 static const CString ydl_whitelist[] = {
     _T("youtube.com/"),
+    _T("youtu.be/"),
     _T("twitch.com/")
 };
 

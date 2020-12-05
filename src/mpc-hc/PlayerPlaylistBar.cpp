@@ -1252,7 +1252,7 @@ OpenMediaData* CPlayerPlaylistBar::GetCurOMD(REFERENCE_TIME rtStart)
             p->fns.AddTailList(&pli->m_fns);
             p->subs.AddTailList(&pli->m_subs);
             p->rtStart = rtStart;
-            p->bAddToRecent = !pli->m_bYoutubeDL;
+            p->bAddToRecent = true;
             return p;
         }
     }
