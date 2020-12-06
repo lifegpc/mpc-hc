@@ -603,7 +603,10 @@ bool CYoutubeDLInstance::loadJSON()
 void CYoutubeDLInstance::loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs) {
     auto& s = AfxGetAppSettings();
     CAtlList<CString> prefrelist;
-    if (!s.sYDLSubsPreference.IsEmpty()) Explode(s.sYDLSubsPreference, prefrelist, ' ');
+    if (!s.sYDLSubsPreference.IsEmpty()) {
+        if (s.sYDLSubsPreference.Find(_T(',')) != -1) ExplodeMin(s.sYDLSubsPreference, prefrelist, ',');
+        else ExplodeMin(s.sYDLSubsPreference, prefrelist, ' ');
+    }
     subs.RemoveAll();
     for (Value::ConstMemberIterator iter = obj.MemberBegin(); iter != obj.MemberEnd(); ++iter) {
         CString lang(iter->name.GetString());

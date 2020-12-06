@@ -15205,7 +15205,10 @@ bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString video
     CAppSettings& s = AfxGetAppSettings();
     CComQIPtr<ISubStream> pSubStream;
     CAtlList<CString> prefrelist;
-    if (!s.sYDLSubsPreference.IsEmpty()) Explode(s.sYDLSubsPreference, prefrelist, ' ');
+    if (!s.sYDLSubsPreference.IsEmpty()) {
+        if (s.sYDLSubsPreference.Find(_T(',')) != -1) ExplodeMin(s.sYDLSubsPreference, prefrelist, ',');
+        else ExplodeMin(s.sYDLSubsPreference, prefrelist, ' ');
+    }
     if (!s.sYDLSubsPreference.IsEmpty() && !CYoutubeDLInstance::isPrefer(prefrelist, sub.lang)) return false;
 
     if (!s.IsISRAutoLoadEnabled() && (FindFilter(CLSID_VSFilter, m_pGB) || FindFilter(CLSID_XySubFilter, m_pGB))) {
