@@ -54,10 +54,14 @@ bool CYoutubeDLInstance::Run(CString url)
     PROCESS_INFORMATION proc_info;
     STARTUPINFO startup_info;
     SECURITY_ATTRIBUTES sec_attrib;
+    auto& s = AfxGetAppSettings();
 
     YDL_LOG(url);
 
-    CString args = _T("youtube-dl -J --all-subs --no-warnings --youtube-skip-dash-manifest");
+    CString args = _T("youtube-dl -J --no-warnings --youtube-skip-dash-manifest");
+    if (s.bUseSubsFromYDL) {
+        args.Append(_T(" --all-subs"));
+    }
     if (url.Find(_T("list=")) > 0) {
         args.Append(_T(" --ignore-errors"));
     }
