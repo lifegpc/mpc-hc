@@ -2838,11 +2838,7 @@ bool CSimpleTextSubtitle::Open(CString data, CTextFile::enc SaveCharSet, int Rea
     f.Flush();
     f.Close();
 
-    if (!f.Open(fn)) {
-        return false;
-    }
-
-    bool fRet = Open(&f, ReadCharSet, name);
+    bool fRet = Open(fn, ReadCharSet, name);
 
     _tremove(fn);
 
