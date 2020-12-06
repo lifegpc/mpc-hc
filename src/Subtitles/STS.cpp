@@ -2842,7 +2842,13 @@ bool CSimpleTextSubtitle::Open(CString data, CTextFile::enc SaveCharSet, int Rea
         return false;
     }
 
-    return Open(&f, ReadCharSet, name);
+    bool fRet = Open(&f, ReadCharSet, name);
+
+    _tremove(fn);
+
+    m_path = _T("");
+
+    return fRet;
 }
 
 bool CSimpleTextSubtitle::Open(CTextFile* f, int CharSet, CString name) {
