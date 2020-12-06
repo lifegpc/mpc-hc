@@ -677,9 +677,6 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
     CString str;
     CAtlMap<int, CPlaylistItem> pli;
     std::vector<int> idx;
-    int ydl_subs_index = 1;
-    int ydl_subs_index2 = 1;
-    CYoutubeDLInstance::YDLSubInfo ydl_sub;
 
     CWebTextFile f(CTextFile::UTF8);
     if (!f.Open(fn) || !f.ReadString(str) || str != _T("MPCPLAYLIST")) {
@@ -701,12 +698,6 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
         }
 
         if (int i = _ttoi(sl.RemoveHead())) {
-            if (i != ydl_subs_index2) {
-                if (!ydl_sub.lang.IsEmpty() && !ydl_sub.url.IsEmpty()) pli[ydl_subs_index2].m_ydl_subs.AddTail(ydl_sub);
-                ydl_sub = CYoutubeDLInstance::YDLSubInfo();
-                ydl_subs_index2++;
-                ydl_subs_index = 1;
-            }
             CString key = sl.RemoveHead();
             CString value = sl.RemoveHead();
 
@@ -749,47 +740,18 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
                 pli[i].m_cue_index = _ttoi(value);
             } else if (key == _T("cover")) {
                 pli[i].m_cover = value;
-            } else if (key == _T("ydl_subs_ext")) {
-                CAtlList<CString> tem;
-                Explode(value, tem, ',', 2);
-                int ind = _ttoi(tem.RemoveHead());
-                CString val = tem.RemoveHead();
-                if (ind == ydl_subs_index) ydl_sub.ext = val;
-                else {
-                    if (!ydl_sub.lang.IsEmpty() && !ydl_sub.url.IsEmpty()) pli[i].m_ydl_subs.AddTail(ydl_sub);
-                    ydl_sub = CYoutubeDLInstance::YDLSubInfo();
-                    ydl_subs_index++;
-                    ydl_sub.ext = val;
-                }
-            } else if (key == _T("ydl_subs_lang")) {
-                CAtlList<CString> tem;
-                Explode(value, tem, ',', 2);
-                int ind = _ttoi(tem.RemoveHead());
-                CString val = tem.RemoveHead();
-                if (ind == ydl_subs_index) ydl_sub.lang = val;
-                else {
-                    if (!ydl_sub.lang.IsEmpty() && !ydl_sub.url.IsEmpty()) pli[i].m_ydl_subs.AddTail(ydl_sub);
-                    ydl_sub = CYoutubeDLInstance::YDLSubInfo();
-                    ydl_subs_index++;
-                    ydl_sub.lang = val;
-                }
-            } else if (key == _T("ydl_subs_url")) {
-                CAtlList<CString> tem;
-                Explode(value, tem, ',', 2);
-                int ind = _ttoi(tem.RemoveHead());
-                CString val = tem.RemoveHead();
-                if (ind == ydl_subs_index) ydl_sub.url = val;
-                else {
-                    if (!ydl_sub.lang.IsEmpty() && !ydl_sub.url.IsEmpty()) pli[i].m_ydl_subs.AddTail(ydl_sub);
-                    ydl_sub = CYoutubeDLInstance::YDLSubInfo();
-                    ydl_subs_index++;
-                    ydl_sub.url = val;
-                }
+            } else if (key == _T("ydl_sub")) {
+                CAtlList<CString> li;
+                Explode(value, li, ',', 3);
+                if (li.GetCount() != 3) continue;
+                CYoutubeDLInstance::YDLSubInfo s;
+                s.lang = li.RemoveHead();
+                s.ext = li.RemoveHead();
+                s.url = li.RemoveHead();
+                if (!s.lang.IsEmpty() && !s.url.IsEmpty()) pli[i].m_ydl_subs.AddTail(s);
             }
         }
     }
-
-    if (!ydl_sub.lang.IsEmpty() && !ydl_sub.url.IsEmpty()) pli[ydl_subs_index2].m_ydl_subs.AddTail(ydl_sub);
 
     std::sort(idx.begin(), idx.end());
     for (int i : idx) {
@@ -859,24 +821,12 @@ bool CPlayerPlaylistBar::SaveMPCPlayList(CString fn, CTextFile::enc e, bool fRem
                 f.WriteString(idx + _T(",cover,") + pli.m_cover + _T("\n"));
             }
             if (pli.m_ydl_subs.GetCount() > 0) {
-                int k = 1;
                 POSITION pos3 = pli.m_ydl_subs.GetHeadPosition();
                 while (pos3) {
                     CYoutubeDLInstance::YDLSubInfo s = pli.m_ydl_subs.GetNext(pos3);
                     CString t;
-                    if (!s.ext.IsEmpty()) {
-                        t.Format(_T("%d,ydl_subs_ext,%d,%s\n"), i, k, s.ext);
-                        f.WriteString(t);
-                    }
-                    if (!s.lang.IsEmpty()) {
-                        t.Format(_T("%d,ydl_subs_lang,%d,%s\n"), i, k, s.lang);
-                        f.WriteString(t);
-                    }
-                    if (!s.url.IsEmpty()) {
-                        t.Format(_T("%d,ydl_subs_url,%d,%s\n"), i, k, s.url);
-                        f.WriteString(t);
-                    }
-                    k++;
+                    t.Format(_T("%d,ydl_sub,%s,%s,%s\n"), i, s.lang, s.ext, s.url);
+                    f.WriteString(t);
                 }
             }
         } else if (pli.m_type == CPlaylistItem::device && pli.m_fns.GetCount() == 2) {
