@@ -619,8 +619,8 @@ void CYoutubeDLInstance::loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs) {
                 sub.lang = lang;
                 if (dict.HasMember(_T("ext")) && !dict[_T("ext")].IsNull()) sub.ext = dict[_T("ext")].GetString();
                 if (dict.HasMember(_T("url")) && !dict[_T("url")].IsNull()) sub.url = dict[_T("url")].GetString();
-                // now only handle subtitles have url
-                if (!sub.url.IsEmpty()) {
+                if (dict.HasMember(_T("data")) && !dict[_T("data")].IsNull() && dict[_T("data")].IsString()) sub.data = dict[_T("data")].GetString();
+                if (!sub.url.IsEmpty() || !sub.data.IsEmpty()) {
                     if (sub.ext.IsEmpty() || sub.ext == _T("vtt") || sub.ext == _T("ass") || sub.ext == _T("srt")) subs.AddTail(sub);
                 }
             }

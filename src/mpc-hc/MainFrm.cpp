@@ -15239,7 +15239,35 @@ bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString video
         pRTS->SetSubRenderSettings(srs);
 #endif
         pRTS->SetDefaultStyle(s.subtitlesDefStyle);
-        if (pRTS->Open(sub.url, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, sub.ext) && pRTS->GetStreamCount() > 0) {
+        bool opened = false;
+        if (!sub.url.IsEmpty()) {
+            SubtitlesProvidersUtils::stringMap s{};
+            DWORD dwStatusCode;
+            CT2CA tem(sub.url);
+            std::string tem2(tem);
+            std::string data("");
+            SubtitlesProvidersUtils::StringDownload(tem2, s, data, true, &dwStatusCode);
+            if (dwStatusCode != 200) {
+                return false;
+            }
+            CString extt(sub.ext);
+            if (extt.IsEmpty()) {
+                int m2(sub.url.ReverseFind(*_T("?")));
+                int m3(sub.url.ReverseFind(*_T("#")));
+                int m = -1;
+                if (m2 > -1 && m3 > -1) m = std::min(m2, m3);
+                else if (m2 > -1) m = m2;
+                else if (m3 > -1) m = m3;
+                CString temp(sub.url);
+                if (m > 0) temp = sub.url.Left(m);
+                m = temp.ReverseFind(*_T("."));
+                if (m >= 0) extt = temp.Mid(m + 1);
+            }
+            opened = pRTS->Open((BYTE*)data.c_str(), data.length(), DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, extt);
+        } else if (!sub.data.IsEmpty()) {
+            opened = pRTS->Open(sub.data, CTextFile::enc::UTF8, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, sub.ext);  // Do not modify charset, Now it wroks with Unicode char.
+        }
+        if (opened && pRTS->GetStreamCount() > 0) {
 #if USE_LIBASS
             pRTS->SetFilterGraph(m_pGB);
 #endif

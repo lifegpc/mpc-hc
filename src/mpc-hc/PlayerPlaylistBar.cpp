@@ -824,6 +824,7 @@ bool CPlayerPlaylistBar::SaveMPCPlayList(CString fn, CTextFile::enc e, bool fRem
                 POSITION pos3 = pli.m_ydl_subs.GetHeadPosition();
                 while (pos3) {
                     CYoutubeDLInstance::YDLSubInfo s = pli.m_ydl_subs.GetNext(pos3);
+                    if (!s.data.IsEmpty()) continue;
                     CString t;
                     t.Format(_T("%d,ydl_sub,%s,%s,%s\n"), i, s.lang, s.ext, s.url);
                     f.WriteString(t);

@@ -34,6 +34,7 @@ public:
         CString lang;
         CString ext;
         CString url;
+        CString data;
     };
 
     class YDLStreamURL {
