@@ -388,6 +388,8 @@ static CString CombinePath(CString base, CString fn, bool base_is_url)
     else {
         if (PathUtils::IsFullFilePath(fn)) {
             return fn;
+        } else if (PathUtils::IsURL(fn)) {
+            return fn;
         }
     }
     return base + fn;
@@ -642,6 +644,10 @@ bool CPlayerPlaylistBar::ParseM3UPlayList(CString fn) {
                             pli.m_fns.RemoveAll();
                             str = CombinePath(base, str, isurl);
                             pli.m_fns.AddTail(str);
+                            if (PathUtils::IsURL(str) && CMainFrame::IsOnYDLWhitelist(str)) {
+                                pli.m_ydlSourceURL = str;
+                                pli.m_bYoutubeDL = true;
+                            }
                             m_pl.AddTail(pli);
                             success = true;
                             continue;
@@ -665,6 +671,10 @@ bool CPlayerPlaylistBar::ParseM3UPlayList(CString fn) {
         pli.m_fns.RemoveAll();
         str = CombinePath(base, str, isurl);
         pli.m_fns.AddTail(str);
+        if (PathUtils::IsURL(str) && CMainFrame::IsOnYDLWhitelist(str)) {
+            pli.m_ydlSourceURL = str;
+            pli.m_bYoutubeDL = true;
+        }
         m_pl.AddTail(pli);
         success = true;
     }
@@ -755,7 +765,7 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
 
     std::sort(idx.begin(), idx.end());
     for (int i : idx) {
-        m_pl.AddTail(pli[i]);
+        if (pli[i].m_fns.GetCount() > 0) m_pl.AddTail(pli[i]);
     }
 
     return !pli.IsEmpty();
@@ -1537,6 +1547,7 @@ void CPlayerPlaylistBar::OnDrawItem(int nIDCtl, LPDRAWITEMSTRUCT lpDrawItemStruc
     int nItem = lpDrawItemStruct->itemID;
     CRect rcItem = lpDrawItemStruct->rcItem;
     POSITION pos = FindPos(nItem);
+    if (pos == NULL) return;
     bool itemPlaying = pos == m_pl.GetPos();
     bool itemSelected = !!m_list.GetItemState(nItem, LVIS_SELECTED);
     CPlaylistItem& pli = m_pl.GetAt(pos);
