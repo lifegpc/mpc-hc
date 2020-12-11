@@ -2806,7 +2806,8 @@ bool CSimpleTextSubtitle::Open(BYTE* data, int length, int CharSet, CString prov
     m_provider = provider;
     CString name;
     name.Format(_T("%s.%s"), lang, ext);
-    CStringA langt(lang);
+    CW2A temp(lang);
+    CStringA langt(temp);
     m_lcid = ISOLang::ISO6391ToLcid(langt);
     return Open(data, length, CharSet, name);
 }
@@ -2817,7 +2818,8 @@ bool CSimpleTextSubtitle::Open(CString data, CTextFile::enc SaveCharSet, int Rea
     m_provider = provider;
     CString name;
     name.Format(_T("%s.%s"), lang, ext);
-    CStringA langt(lang);
+    CW2A temp(lang);
+    CStringA langt(temp);
     m_lcid = ISOLang::ISO6391ToLcid(langt);
     TCHAR path[MAX_PATH];
     if (!GetTempPath(MAX_PATH, path)) {
