@@ -13413,12 +13413,9 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
 
             auto* pli = m_wndPlaylistBar.GetCur();
             if (s.bUseSubsFromYDL && pli != nullptr && pli->m_bYoutubeDL) {
-                int m = pli->m_label.ReverseFind(*_T(" ("));
-                CString videoName(pli->m_label);
-                if (m > 0) videoName = pli->m_label.Left(m);
                 POSITION pos2 = pli->m_ydl_subs.GetHeadPosition();
                 while (pos2) {
-                    LoadSubtitle(pli->m_ydl_subs.GetNext(pos2), videoName);
+                    LoadSubtitle(pli->m_ydl_subs.GetNext(pos2));
                 }
             }
         }
@@ -15208,7 +15205,7 @@ bool CMainFrame::LoadSubtitle(CString fn, SubtitleInput* pSubInput /*= nullptr*/
     return !!pSubStream;
 }
 
-bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString videoName) {
+bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub) {
     CAppSettings& s = AfxGetAppSettings();
     CComQIPtr<ISubStream> pSubStream;
     CAtlList<CString> prefrelist;
@@ -15264,9 +15261,9 @@ bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub, CString video
                 m = temp.ReverseFind(*_T("."));
                 if (m >= 0) extt = temp.Mid(m + 1);
             }
-            opened = pRTS->Open((BYTE*)data.c_str(), data.length(), DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, extt);
+            opened = pRTS->Open((BYTE*)data.c_str(), data.length(), DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, extt);
         } else if (!sub.data.IsEmpty()) {
-            opened = pRTS->Open(sub.data, CTextFile::enc::UTF8, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, videoName, sub.ext);  // Do not modify charset, Now it wroks with Unicode char.
+            opened = pRTS->Open(sub.data, CTextFile::enc::UTF8, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, sub.ext);  // Do not modify charset, Now it wroks with Unicode char.
         }
         if (opened && pRTS->GetStreamCount() > 0) {
 #if USE_LIBASS

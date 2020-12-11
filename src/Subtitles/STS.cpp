@@ -2800,23 +2800,23 @@ bool CSimpleTextSubtitle::Open(CString fn, int CharSet, CString name, CString vi
     return Open(&f, CharSet, name);
 }
 
-bool CSimpleTextSubtitle::Open(BYTE* data, int length, int CharSet, CString provider, CString lang, CString videoName, CString ext) {
+bool CSimpleTextSubtitle::Open(BYTE* data, int length, int CharSet, CString provider, CString lang, CString ext) {
     Empty();
 
     m_provider = provider;
     CString name;
-    name.Format(_T("%s.%s.%s"), videoName, lang, ext);
+    name.Format(_T("%s.%s"), lang, ext);
     CStringA langt(lang);
     m_lcid = ISOLang::ISO6391ToLcid(langt);
     return Open(data, length, CharSet, name);
 }
 
-bool CSimpleTextSubtitle::Open(CString data, CTextFile::enc SaveCharSet, int ReadCharSet, CString provider, CString lang, CString videoName, CString ext) {
+bool CSimpleTextSubtitle::Open(CString data, CTextFile::enc SaveCharSet, int ReadCharSet, CString provider, CString lang, CString ext) {
     Empty();
 
     m_provider = provider;
     CString name;
-    name.Format(_T("%s.%s.%s"), videoName, lang, ext);
+    name.Format(_T("%s.%s"), lang, ext);
     CStringA langt(lang);
     m_lcid = ISOLang::ISO6391ToLcid(langt);
     TCHAR path[MAX_PATH];
