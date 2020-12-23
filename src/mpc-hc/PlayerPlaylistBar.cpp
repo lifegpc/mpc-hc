@@ -649,6 +649,7 @@ bool CPlayerPlaylistBar::ParseM3UPlayList(CString fn) {
                                 pli.m_bYoutubeDL = true;
                             }
                             m_pl.AddTail(pli);
+                            pli = CPlaylistItem();
                             success = true;
                             continue;
                         }
@@ -676,6 +677,7 @@ bool CPlayerPlaylistBar::ParseM3UPlayList(CString fn) {
             pli.m_bYoutubeDL = true;
         }
         m_pl.AddTail(pli);
+        pli = CPlaylistItem();
         success = true;
     }
 
