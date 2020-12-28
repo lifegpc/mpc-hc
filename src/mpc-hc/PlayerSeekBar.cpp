@@ -415,19 +415,28 @@ void CPlayerSeekBar::UpdateToolTipPosition(CPoint point)
 void CPlayerSeekBar::UpdateToolTipText()
 {
     ASSERT(m_bHasDuration);
-    REFERENCE_TIME rtNow = PositionFromClientPoint(m_tooltipPoint);
+    CString posstr, rstr;
+    const CAppSettings& s = AfxGetAppSettings();
+    REFERENCE_TIME rtNow, rtDur;
+    rtNow = PositionFromClientPoint(m_tooltipPoint);
+    rtDur = m_rtStop;
 
-    CString time;
     GUID timeFormat = m_pMainFrame->GetTimeFormat();
     if (timeFormat == TIME_FORMAT_MEDIA_TIME) {
-        DVD_HMSF_TIMECODE tcNow = RT2HMS_r(rtNow);
-        if (tcNow.bHours > 0) {
-            time.Format(_T("%02u:%02u:%02u"), tcNow.bHours, tcNow.bMinutes, tcNow.bSeconds);
+        DVD_HMSF_TIMECODE tcNow, tcDur, tcRt;
+        tcNow = RT2HMS(rtNow);
+        tcDur = RT2HMS(rtDur);
+        tcRt = RT2HMS(rtDur - rtNow);
+        if (tcDur.bHours > 0 || (rtNow >= rtDur && tcNow.bHours > 0)) {
+            posstr.Format(_T("%02u:%02u:%02u"), tcNow.bHours, tcNow.bMinutes, tcNow.bSeconds);
+            rstr.Format(_T("- %02u:%02u:%02u"), tcRt.bHours, tcRt.bMinutes, tcRt.bSeconds);
         } else {
-            time.Format(_T("%02u:%02u"), tcNow.bMinutes, tcNow.bSeconds);
+            posstr.Format(_T("%02u:%02u"), tcNow.bMinutes, tcNow.bSeconds);
+            rstr.Format(_T("- %02u:%02u"), tcRt.bMinutes, tcRt.bSeconds);
         }
     } else if (timeFormat == TIME_FORMAT_FRAME) {
-        time.Format(_T("%I64d"), rtNow);
+        posstr.Format(_T("%I64d"), rtNow);
+        rstr.Format(_T("%I64d"), rtDur - rtNow);
     } else {
         ASSERT(FALSE);
     }
@@ -440,6 +449,8 @@ void CPlayerSeekBar::UpdateToolTipText()
             m_pChapterBag->ChapLookup(&rt, &chapterName);
         }
     }
+
+    CString time = s.fRemainingTime ? rstr : posstr;
 
     if (chapterName.Length() == 0) {
         m_tooltipText = time;
