@@ -93,6 +93,7 @@
 #define IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST    _T("UseTitleInRecentFileList")
 #define IDS_RS_USE_SUBS_FROM_YDL            _T("UseSubsFromYDL")
 #define IDS_RS_YDL_SUBS_PREFERENCE          _T("YDLSubsPreference")
+#define IDS_RS_USE_AUTOMATIC_CAPTIONS       _T("UseAutomaticCaptions") 
 
 // Audio
 #define IDS_RS_VOLUME                       _T("Volume")

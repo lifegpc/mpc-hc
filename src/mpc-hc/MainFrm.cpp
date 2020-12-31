@@ -13722,7 +13722,8 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
             if (s.bUseSubsFromYDL && pli != nullptr && pli->m_bYoutubeDL) {
                 POSITION pos2 = pli->m_ydl_subs.GetHeadPosition();
                 while (pos2) {
-                    LoadSubtitle(pli->m_ydl_subs.GetNext(pos2));
+                    CYoutubeDLInstance::YDLSubInfo sub = pli->m_ydl_subs.GetNext(pos2);
+                    if (!sub.isAutomaticCaptions || s.bUseAutomaticCaptions) LoadSubtitle(sub);
                 }
             }
         }
@@ -15593,9 +15594,11 @@ bool CMainFrame::LoadSubtitle(CYoutubeDLInstance::YDLSubInfo& sub) {
                 m = temp.ReverseFind(*_T("."));
                 if (m >= 0) extt = temp.Mid(m + 1);
             }
-            opened = pRTS->Open((BYTE*)data.c_str(), data.length(), DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, extt);
+            CString langt = sub.isAutomaticCaptions ? sub.lang + _T("[Automatic]") : sub.lang;
+            opened = pRTS->Open((BYTE*)data.c_str(), data.length(), DEFAULT_CHARSET, _T("YoutubeDL"), langt, extt);
         } else if (!sub.data.IsEmpty()) {
-            opened = pRTS->Open(sub.data, CTextFile::enc::UTF8, DEFAULT_CHARSET, _T("YoutubeDL"), sub.lang, sub.ext);  // Do not modify charset, Now it wroks with Unicode char.
+            CString langt = sub.isAutomaticCaptions ? sub.lang + _T("[Automatic]") : sub.lang;
+            opened = pRTS->Open(sub.data, CTextFile::enc::UTF8, DEFAULT_CHARSET, _T("YoutubeDL"), langt, sub.ext);  // Do not modify charset, Now it wroks with Unicode char.
         }
         if (opened && pRTS->GetStreamCount() > 0) {
 #if USE_LIBASS

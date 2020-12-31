@@ -35,6 +35,7 @@ public:
         CString ext;
         CString url;
         CString data;
+        bool isAutomaticCaptions = false;
     };
 
     class YDLStreamURL {
@@ -105,7 +106,7 @@ private:
     DWORD capacity_out, capacity_err;
 
     bool loadJSON();
-    void loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs);
+    void loadSub(const Value& obj, CAtlList<YDLSubInfo>& subs, bool isAutomaticCaptions = false);
     static DWORD WINAPI BuffOutThread(void* ydl_inst);
     static DWORD WINAPI BuffErrThread(void* ydl_inst);
 };

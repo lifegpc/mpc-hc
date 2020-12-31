@@ -870,6 +870,7 @@ public:
     bool bUseTitleInRecentFileList;
     bool bUseSubsFromYDL;
     CString sYDLSubsPreference;
+    bool bUseAutomaticCaptions;
 
 private:
     struct FilterKey {

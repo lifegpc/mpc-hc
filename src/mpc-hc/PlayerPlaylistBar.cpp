@@ -752,11 +752,12 @@ bool CPlayerPlaylistBar::ParseMPCPlayList(CString fn)
                 pli[i].m_cue_index = _ttoi(value);
             } else if (key == _T("cover")) {
                 pli[i].m_cover = value;
-            } else if (key == _T("ydl_sub")) {
+            } else if (key == _T("ydl_sub") || key == _T("ydl_auto_sub")) {
                 CAtlList<CString> li;
                 Explode(value, li, ',', 3);
                 if (li.GetCount() != 3) continue;
                 CYoutubeDLInstance::YDLSubInfo s;
+                if (key == _T("ydl_auto_sub")) s.isAutomaticCaptions = true;
                 s.lang = li.RemoveHead();
                 s.ext = li.RemoveHead();
                 s.url = li.RemoveHead();
@@ -838,7 +839,8 @@ bool CPlayerPlaylistBar::SaveMPCPlayList(CString fn, CTextFile::enc e, bool fRem
                     CYoutubeDLInstance::YDLSubInfo s = pli.m_ydl_subs.GetNext(pos3);
                     if (!s.data.IsEmpty()) continue;
                     CString t;
-                    t.Format(_T("%d,ydl_sub,%s,%s,%s\n"), i, s.lang, s.ext, s.url);
+                    CString t2 = s.isAutomaticCaptions ? _T("ydl_auto_sub") : _T("ydl_sub");
+                    t.Format(_T("%d,%s,%s,%s,%s\n"), i, t2, s.lang, s.ext, s.url);
                     f.WriteString(t);
                 }
             }
