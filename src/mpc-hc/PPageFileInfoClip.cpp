@@ -64,6 +64,7 @@ CPPageFileInfoClip::CPPageFileInfoClip(CString path, IFilterGraph* pFG, IFileSou
             CComBSTR bstr;
             if (SUCCEEDED(pAMMC->get_Title(&bstr)) && bstr.Length()) {
                 m_clip = bstr.m_str;
+                m_clip.Trim();
                 bFound = true;
             }
             bstr.Empty();
@@ -84,7 +85,7 @@ CPPageFileInfoClip::CPPageFileInfoClip(CString path, IFilterGraph* pFG, IFileSou
             bstr.Empty();
             if (SUCCEEDED(pAMMC->get_Description(&bstr)) && bstr.Length()) {
                 m_desc = bstr.m_str;
-                m_desc.Replace(L"\r\n", L"\n"); //Relpace existing \r\n to \n
+                m_desc.Replace(L"\r\n", L"\n"); //Replace existing \r\n to \n
                 m_desc.Replace(L"\n", L"\r\n");
                 bFound = true;
             }
@@ -147,7 +148,11 @@ BOOL CPPageFileInfoClip::OnInitDialog()
     m_fn.TrimRight('/');
     int i = std::max(m_fn.ReverseFind('\\'), m_fn.ReverseFind('/'));
     if (i >= 0 && i < m_fn.GetLength() - 1) {
-        m_location = m_fn.Left(i);
+        if (PathUtils::IsURL(m_fn)) {
+            m_location = m_fn;
+        } else {
+            m_location = m_fn.Left(i);
+        }
         m_fn = m_fn.Mid(i + 1);
 
         if (m_location.GetLength() == 2 && m_location[1] == ':') {
@@ -160,9 +165,9 @@ BOOL CPPageFileInfoClip::OnInitDialog()
         m_icon.SetIcon(m_hIcon);
     }
 
-    if (m_path.Find(_T("://")) > 1) {
+    if (PathUtils::IsURL(m_path)) {
         m_displayFn = UrlDecodeWithUTF8(ShortenURL(m_fn));
-        m_displayLocation = UrlDecodeWithUTF8(m_location);
+        m_displayLocation = UrlDecodeWithUTF8(m_location, true);
     } else {
         m_displayFn = m_fn;
         m_displayLocation = m_location;

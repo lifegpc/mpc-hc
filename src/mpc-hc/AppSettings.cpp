@@ -81,6 +81,7 @@ CAppSettings::CAppSettings()
     , fGlobalMedia(false)
     , nLogoId(-1)
     , fLogoExternal(false)
+    , fLogoColorProfileEnabled(false)
     , fEnableWebServer(false)
     , nWebServerPort(13579)
     , nCmdlnWebServerPort(-1)
@@ -173,6 +174,8 @@ CAppSettings::CAppSettings()
     , fPreventMinimize(false)
     , bUseEnhancedTaskBar(true)
     , fLCDSupport(false)
+    , fSeekPreview(false)
+    , iSeekPreviewSize(15)
     , fUseSearchInFolder(false)
     , fUseTimeTooltip(true)
     , nTimeTooltipPosition(TIME_TOOLTIP_ABOVE_SEEKBAR)
@@ -957,6 +960,10 @@ void CAppSettings::SaveSettings()
 
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_LCD_SUPPORT, fLCDSupport);
 
+    pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW, fSeekPreview);
+    pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW_SIZE, iSeekPreviewSize);
+
+
     // Save analog capture settings
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_DEFAULT_CAPTURE, iDefaultCaptureDevice);
     pApp->WriteProfileString(IDS_R_CAPTURE, IDS_RS_VIDEO_DISP_NAME, strAnalogVideo);
@@ -1053,6 +1060,7 @@ void CAppSettings::SaveSettings()
     pApp->WriteProfileString(IDS_R_SETTINGS, IDS_RS_LOGOFILE, strLogoFileName);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOID, nLogoId);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOEXT, fLogoExternal);
+    pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOCOLORPROFILE, fLogoColorProfileEnabled);
 
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_HIDECDROMSSUBMENU, fHideCDROMsSubMenu);
 
@@ -1137,7 +1145,7 @@ void CAppSettings::SaveSettings()
         CComHeapPtr<WCHAR> pDeviceId;
         BOOL bExclusive;
         UINT32 uBufferDuration;
-        if (SUCCEEDED(sanear->GetOuputDevice(&pDeviceId, &bExclusive, &uBufferDuration))) {
+        if (SUCCEEDED(sanear->GetOutputDevice(&pDeviceId, &bExclusive, &uBufferDuration))) {
             pApp->WriteProfileString(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_ID, pDeviceId);
             pApp->WriteProfileInt(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_EXCLUSIVE, bExclusive);
             pApp->WriteProfileInt(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_BUFFER, uBufferDuration);
@@ -1584,7 +1592,7 @@ void CAppSettings::LoadSettings()
     if (IsWindows10OrGreater()) {
         CRegKey key;
         if (ERROR_SUCCESS == key.Open(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"), KEY_READ)) {
-            DWORD useTheme = -1;
+            DWORD useTheme = (DWORD)-1;
             if (ERROR_SUCCESS == key.QueryDWORDValue(_T("AppsUseLightTheme"), useTheme)) {
                 if (0 == useTheme) {
                     bWindows10DarkThemeActive = true;
@@ -1592,7 +1600,7 @@ void CAppSettings::LoadSettings()
             }
         }
         if (ERROR_SUCCESS == key.Open(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\DWM"), KEY_READ)) {
-            DWORD useColorPrevalence = -1;
+            DWORD useColorPrevalence = (DWORD)-1;
             if (ERROR_SUCCESS == key.QueryDWORDValue(_T("ColorPrevalence"), useColorPrevalence)) {
                 if (1 == useColorPrevalence) {
                     bWindows10AccentColorsEnabled = true;
@@ -1773,6 +1781,7 @@ void CAppSettings::LoadSettings()
     strLogoFileName = pApp->GetProfileString(IDS_R_SETTINGS, IDS_RS_LOGOFILE);
     nLogoId = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOID, -1);
     fLogoExternal = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOEXT, FALSE);
+    fLogoColorProfileEnabled = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LOGOCOLORPROFILE, FALSE);
 
     fHideCDROMsSubMenu = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_HIDECDROMSSUBMENU, FALSE);
 
@@ -1859,6 +1868,11 @@ void CAppSettings::LoadSettings()
 
 
     fLCDSupport = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_LCD_SUPPORT, FALSE);
+
+    fSeekPreview = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW, FALSE);
+    iSeekPreviewSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW_SIZE, 15);
+    if (iSeekPreviewSize < 10 || iSeekPreviewSize > 30) iSeekPreviewSize = 15;
+
 
     // Save analog capture settings
     iDefaultCaptureDevice = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_DEFAULT_CAPTURE, 0);
@@ -1949,7 +1963,7 @@ void CAppSettings::LoadSettings()
         nCLSwitches |= CLSW_FULLSCREEN;
     }
 
-    sanear->SetOuputDevice(pApp->GetProfileString(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_ID),
+    sanear->SetOutputDevice(pApp->GetProfileString(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_ID),
                            pApp->GetProfileInt(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_EXCLUSIVE, FALSE),
                            pApp->GetProfileInt(IDS_R_SANEAR, IDS_RS_SANEAR_DEVICE_BUFFER,
                                                SaneAudioRenderer::ISettings::OUTPUT_DEVICE_BUFFER_DEFAULT_MS));
@@ -2493,7 +2507,7 @@ void CAppSettings::CRecentFileAndURLList::Add(LPCTSTR lpszPathName)
 
     CString pathName = lpszPathName;
 
-    bool fURL = pathName.Find(_T("://")) > 1;
+    bool fURL = PathUtils::IsURL(pathName);
 
     // fully qualify the path name
     if (!fURL) {
@@ -2558,8 +2572,7 @@ void CAppSettings::CRecentFileListWithMoreInfo::Add(RecentFileEntry r) {
             r.fns.RemoveAt(p2);
             continue;
         }
-        bool fURL = fn.Find(_T("://")) > 1;
-        if (!fURL) {
+        if (!PathUtils::IsURL(fn)) {
             fn = MakeFullPath(fn);
             r.fns.SetAt(p2, fn);
         }
@@ -2569,8 +2582,7 @@ void CAppSettings::CRecentFileListWithMoreInfo::Add(RecentFileEntry r) {
         if (t.MakeLower().Find(_T("@device:")) >= 0) {
             r.cue = _T("");
         }
-        bool fURL = r.cue.Find(_T("://")) > 1;
-        if (!fURL) {
+        if (!PathUtils::IsURL(r.cue)) {
             r.cue = MakeFullPath(r.cue);
         }
     }
@@ -2584,8 +2596,7 @@ void CAppSettings::CRecentFileListWithMoreInfo::Add(RecentFileEntry r) {
                 r.subs.RemoveAt(p2);
                 continue;
             }
-            bool fURL = fn.Find(_T("://")) > 1;
-            if (!fURL) {
+            if (!PathUtils::IsURL(fn)) {
                 fn = MakeFullPath(fn);
                 r.subs.SetAt(p2, fn);
             }
@@ -2646,7 +2657,7 @@ void CAppSettings::CRecentFileListWithMoreInfo::WriteList() {
     auto pApp = AfxGetMyApp();
     pApp->WriteProfileString(m_section, nullptr, nullptr);
     int i = 1;
-    int m = rfe_array.GetCount() > m_maxSize ? m_maxSize : rfe_array.GetCount();
+    int m = rfe_array.GetCount() > m_maxSize ? m_maxSize : (int)rfe_array.GetCount();
     for (; i <= m; i++) {
         auto& r = rfe_array[i - 1];
         CString t;

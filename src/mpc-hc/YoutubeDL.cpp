@@ -59,7 +59,11 @@ bool CYoutubeDLInstance::Run(CString url)
 
     YDL_LOG(url);
 
-    CString args = "youtube-dl -J \"" + url + "\"";
+    CString args = _T("youtube-dl -J --all-subs --no-warnings --youtube-skip-dash-manifest");
+    if (url.Find(_T("list=")) > 0) {
+        args.Append(_T(" --ignore-errors"));
+    }
+    args.Append(_T(" \"") + url + _T("\""));
 
     ZeroMemory(&proc_info, sizeof(PROCESS_INFORMATION));
     ZeroMemory(&startup_info, sizeof(STARTUPINFO));
@@ -135,18 +139,8 @@ bool CYoutubeDLInstance::Run(CString url)
     }
     buf_err[idx_err] = '\0';
 
-    CString err = buf_err;
     DWORD exitcode;
     GetExitCodeProcess(proc_info.hProcess, &exitcode);
-    if (exitcode) {
-        if (err.IsEmpty()) {
-            err.Format(_T("An error occurred while running youtube-dl.exe\n\nprocess exitcode = %d"), exitcode);
-        } else {
-            err = _T("Youtube-dl.exe error message:\n\n") + err;
-        }
-        AfxMessageBox(err, MB_ICONERROR, 0);
-        return false;
-    }
 
     CloseHandle(proc_info.hProcess);
     CloseHandle(proc_info.hThread);
@@ -154,6 +148,21 @@ bool CYoutubeDLInstance::Run(CString url)
     CloseHandle(hThreadErr);
     CloseHandle(hStdout_r);
     CloseHandle(hStderr_r);
+
+    if (exitcode) {
+        CString err = buf_err;
+        if (err.IsEmpty()) {
+            err.Format(_T("An error occurred while running youtube-dl.exe\n\nprocess exitcode = %d"), exitcode);
+        } else {
+            if (err.Find(_T("ERROR: Unsupported URL")) >= 0) {
+                // abort without showing error message
+                return false;
+            }
+            err = _T("Youtube-dl.exe error message:\n\n") + err;
+        }
+        AfxMessageBox(err, MB_ICONERROR, 0);
+        return false;
+    }
 
     return loadJSON();
 }
@@ -211,6 +220,7 @@ struct YDLStreamDetails {
     int height;
     CString vcodec;
     CString acodec;
+    CString format;
     bool has_video;
     bool has_audio;
     int vbr;
@@ -234,22 +244,17 @@ bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool re
         details.has_video = details.vcodec != _T("none") || (details.width > 0) || (details.height > 0);
         details.acodec    = format.HasMember(_T("acodec")) && !format[_T("acodec")].IsNull() ? format[_T("acodec")].GetString() : _T("none");
         details.has_audio = details.acodec != _T("none");
+        details.format    = format.HasMember(_T("format")) && !format[_T("format")].IsNull() ? format[_T("format")].GetString() : _T("none");
 
-        if (!details.has_video && !details.has_audio) {
-            #if YDL_EXTRA_LOGGING
-            YDL_LOG(_T("ignore url without audio/video details = %s"), details.url);
-            #endif
-            return false;
-        }
         if (require_video && !details.has_video) {
             #if YDL_EXTRA_LOGGING
-            YDL_LOG(_T("ignore url because it has no video: %s"), details.url);
+            YDL_LOG(_T("ignore url because it has no video: %s"), static_cast<LPCWSTR>(details.url));
             #endif
             return false;
         }
-        if (require_audio_only && (!details.has_audio || details.has_video)) {
+        if (require_audio_only && (details.has_video || !details.has_audio)) {
             #if YDL_EXTRA_LOGGING
-            YDL_LOG(_T("ignore url because it is not audio only (vcodec=%s): %s"), details.vcodec, details.url);
+            YDL_LOG(_T("ignore url because it is not audio only (vcodec=%s): %s"), static_cast<LPCWSTR>(details.vcodec), static_cast<LPCWSTR>(details.url));
             #endif
             return false;
         }
@@ -265,9 +270,9 @@ bool GetYDLStreamDetails(const Value& format, YDLStreamDetails& details, bool re
         }
 
         #if YDL_LOG_URLS
-        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d url=%s"), details.vcodec, details.width, details.height, details.fps, details.vbr, details.acodec, details.abr, details.url);
+        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d url=%s"), static_cast<LPCWSTR>(details.vcodec), details.width, details.height, details.fps, details.vbr, static_cast<LPCWSTR>(details.acodec), details.abr, static_cast<LPCWSTR>(details.url));
         #else
-        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d"), details.vcodec, details.width, details.height, details.fps, details.vbr, details.acodec, details.abr);
+        YDL_LOG(_T("vcodec=%s width=%d height=%d fps=%d vbr=%d acodec=%s abr=%d"), static_cast<LPCWSTR>(details.vcodec), details.width, details.height, details.fps, details.vbr, static_cast<LPCWSTR>(details.acodec), details.abr);
         #endif
 
         return true;
@@ -296,6 +301,10 @@ bool IsBetterYDLStream(YDLStreamDetails& first, YDLStreamDetails& second, int ma
         // We want separate audio/video streams
         if (separate && first.has_audio && !second.has_audio) {
             return true;
+        }
+
+        if (!second.has_video) {
+            return false;
         }
 
         // Video format
@@ -394,15 +403,29 @@ bool IsBetterYDLStream(YDLStreamDetails& first, YDLStreamDetails& second, int ma
                 }
             }
         }
-    } else {
+    } else if (first.has_audio) {
+        if (!second.has_audio) {
+            return false;
+        }
+
         // Audio format
-        if (first.vcodec.Left(4) == _T("opus")) {
-            if (second.vcodec.Left(4) != _T("opus")) {
+        if (first.acodec.Left(4) == _T("opus")) {
+            if (second.acodec.Left(4) != _T("opus")) {
                 return false;
             }
         } else {
-            if (second.vcodec.Left(4) == _T("opus")) {
+            if (second.acodec.Left(4) == _T("opus")) {
                 return true;
+            }
+        }
+    } else {
+        if (second.has_video || second.has_audio) {
+            return true;
+        } else {
+            if (first.format != _T("none")) {
+                return false;
+            } else {
+                if (second.format != _T("none")) return true;
             }
         }
     }
@@ -432,20 +455,27 @@ bool IsBetterYDLStream(YDLStreamDetails& first, YDLStreamDetails& second, int ma
 }
 
 // find best video track
-bool filterVideo(const Value& formats, YDLStreamDetails& ydl_sd, int max_height, bool separate, int preferred_format)
+bool filterVideo(const Value& entry, YDLStreamDetails& ydl_sd, int max_height, bool separate, int preferred_format)
 {
     YDLStreamDetails current;
     bool found = false;
-
-    for (rapidjson::SizeType i = 0; i < formats.Size(); i++) {
-        if (GetYDLStreamDetails(formats[i], current, true, false)) {
-            if (!found || IsBetterYDLStream(ydl_sd, current, max_height, separate, preferred_format)) {
-                ydl_sd = current;
-                //YDL_LOG(_T("this is currently best video stream"));
+    if (entry.HasMember(_T("formats")) && !entry[_T("formats")].IsNull() && entry[_T("formats")].IsArray()) {
+        const Value& formats = entry[_T("formats")];
+        for (rapidjson::SizeType i = 0; i < formats.Size(); i++) {
+            if (GetYDLStreamDetails(formats[i], current, true, false)) {
+                if (!found || IsBetterYDLStream(ydl_sd, current, max_height, separate, preferred_format)) {
+                    ydl_sd = current;
+                    //YDL_LOG(_T("this is currently best video stream"));
+                }
+                found = true;
             }
-            found = true;
         }
+    } else if (entry.HasMember(_T("url")) && !entry[_T("url")].IsNull()) {
+        current.url = entry[_T("url")].GetString();
+        ydl_sd = current;
+        found = true;
     }
+    
     return found;
 }
 
@@ -467,7 +497,7 @@ bool filterAudio(const Value& formats, YDLStreamDetails& ydl_sd)
     return found;
 }
 
-bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
+bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams, YDLPlaylistInfo& info)
 {
     CString url;
     CString extractor;
@@ -483,7 +513,7 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
     auto& s = AfxGetAppSettings();
 
     if (!bIsPlaylist) {
-        if (!pJSON->d.HasMember(_T("formats"))) {
+        if ((!pJSON->d.HasMember(_T("formats")) || pJSON->d[_T("formats")].IsNull())&& (!pJSON->d.HasMember(_T("url")) || pJSON->d[_T("url")].IsNull())) {
             return false;
         }
 
@@ -502,25 +532,17 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
         if (pJSON->d.HasMember(_T("episode_id")) && !pJSON->d[_T("episode_id")].IsNull()) stream.episode_id = pJSON->d[_T("episode_id")].GetString();
         if (pJSON->d.HasMember(_T("webpage_url")) && !pJSON->d[_T("webpage_url")].IsNull()) stream.webpage_url = pJSON->d[_T("webpage_url")].GetString();
 
-        // detect generic http link
-        if (extractor == _T("generic")) {
-            stream.video_url = pJSON->d[_T("formats")][0][_T("url")].GetString();
-            stream.audio_url = _T("");
-            streams.AddTail(stream);
-            return true;
-        }
-
-        if (filterVideo(pJSON->d[_T("formats")], ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
+        if (filterVideo(pJSON->d, ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
             stream.video_url = ydl_sd.url;
             stream.audio_url = _T("");
             // find separate audio stream
-            if (ydl_sd.has_video && !ydl_sd.has_audio) {
+            if (ydl_sd.has_video && !ydl_sd.has_audio && pJSON->d.HasMember(_T("formats")) && !pJSON->d[_T("formats")].IsNull()) {
                 if (filterAudio(pJSON->d[_T("formats")], ydl_sd)) {
                     stream.audio_url = ydl_sd.url;
                 }
             }
             streams.AddTail(stream);
-        } else {
+        } else if (pJSON->d.HasMember(_T("formats")) && !pJSON->d[_T("formats")].IsNull()) {
             if (filterAudio(pJSON->d[_T("formats")], ydl_sd)) {
                 stream.audio_url = ydl_sd.url;
                 stream.video_url = _T("");
@@ -528,6 +550,11 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
             }
         }
     } else {
+        if (pJSON->d.HasMember(_T("id")) && !pJSON->d[_T("id")].IsNull()) info.id = pJSON->d[_T("id")].GetString();
+        if (pJSON->d.HasMember(_T("title")) && !pJSON->d[_T("title")].IsNull()) info.title = pJSON->d[_T("title")].GetString();
+        if (pJSON->d.HasMember(_T("uploader")) && !pJSON->d[_T("uploader")].IsNull()) info.uploader = pJSON->d[_T("uploader")].GetString();
+        if (pJSON->d.HasMember(_T("uploader_id")) && !pJSON->d[_T("uploader_id")].IsNull()) info.uploader_id = pJSON->d[_T("uploader_id")].GetString();
+        if (pJSON->d.HasMember(_T("uploader_url")) && !pJSON->d[_T("uploader_url")].IsNull()) info.uploader_url = pJSON->d[_T("uploader_url")].GetString();
         if (pJSON->d.HasMember(_T("entries"))) {
             YDL_LOG(_T("Parsing playlist"));
             const Value& entries = pJSON->d[_T("entries")];
@@ -535,7 +562,10 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
             for (rapidjson::SizeType i = 0; i < entries.Size(); i++) {
                 YDL_LOG(_T("Playlist entry %d"), i);
                 const Value& entry = entries[i];
-                if (filterVideo(entry[_T("formats")], ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
+                if ((!entry.HasMember(_T("formats")) || entry[_T("formats")].IsNull()) && (!entry.HasMember(_T("url")) || entry[_T("url")].IsNull())) {
+                    continue;
+                }
+                if (filterVideo(entry, ydl_sd, s.iYDLMaxHeight, s.bYDLAudioOnly, s.iYDLVideoFormat)) {
                     stream.video_url = ydl_sd.url;
                     stream.audio_url = _T("");
                     if (entry.HasMember(_T("title")) && !entry[_T("title")].IsNull()) stream.title = entry[_T("title")].GetString();
@@ -547,14 +577,14 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
                     if (entry.HasMember(_T("episode_number")) && !entry[_T("episode_number")].IsNull()) stream.episode_number = entry[_T("episode_number")].GetInt();
                     if (entry.HasMember(_T("episode_id")) && !entry[_T("episode_id")].IsNull()) stream.episode_id = entry[_T("episode_id")].GetString();
                     if (entry.HasMember(_T("webpage_url")) && !entry[_T("webpage_url")].IsNull()) stream.webpage_url = entry[_T("webpage_url")].GetString();
-                    if (ydl_sd.has_video && !ydl_sd.has_audio) {
+                    if (ydl_sd.has_video && !ydl_sd.has_audio && entry.HasMember(_T("formats")) && !entry[_T("formats")].IsNull()) {
                         if (filterAudio(entry[_T("formats")], ydl_sd)) {
                             stream.audio_url = ydl_sd.url;
                         }
                     }
                     streams.AddTail(stream);
-                } else {
-                    if (filterAudio(entry[i][_T("formats")], ydl_sd)) {
+                } else if (entry.HasMember(_T("formats")) && !entry[_T("formats")].IsNull()) {
+                    if (filterAudio(entry[_T("formats")], ydl_sd)) {
                         stream.audio_url = ydl_sd.url;
                         stream.title = entry[_T("title")].GetString();
                         stream.video_url = _T("");
@@ -569,9 +599,15 @@ bool CYoutubeDLInstance::GetHttpStreams(CAtlList<YDLStreamURL>& streams)
 
 bool CYoutubeDLInstance::loadJSON()
 {
+    if (!buf_out) {
+        return false;
+    }
     //the JSON buffer is ASCII with Unicode encoded with escape characters
     pJSON->d.Parse<rapidjson::kParseDefaultFlags, rapidjson::ASCII<>>(buf_out);
     if (pJSON->d.HasParseError()) {
+        return false;
+    }
+    if (!pJSON->d.IsObject() || !pJSON->d.HasMember(_T("extractor"))) {
         return false;
     }
     bIsPlaylist = pJSON->d.FindMember(_T("entries")) != pJSON->d.MemberEnd();

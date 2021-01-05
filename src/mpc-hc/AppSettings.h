@@ -105,19 +105,19 @@ enum MpcCaptionState {
 }; // flags for Caption & Menu Mode
 
 enum {
-    VIDRNDT_DS_DEFAULT,
-    VIDRNDT_DS_OLDRENDERER,
-    VIDRNDT_DS_OVERLAYMIXER,
-    VIDRNDT_DS_VMR9WINDOWED = 4,
+    VIDRNDT_DS_DEFAULT        = 0,
+    VIDRNDT_DS_OLDRENDERER    = 1,
+    VIDRNDT_DS_OVERLAYMIXER   = 2,
+    VIDRNDT_DS_VMR9WINDOWED   = 4,
     VIDRNDT_DS_VMR9RENDERLESS = 6,
-    VIDRNDT_DS_DXR,
-    VIDRNDT_DS_NULL_COMP,
-    VIDRNDT_DS_NULL_UNCOMP,
-    VIDRNDT_DS_EVR,
-    VIDRNDT_DS_EVR_CUSTOM,
-    VIDRNDT_DS_MADVR,
-    VIDRNDT_DS_SYNC,
-    VIDRNDT_DS_MPCVR,
+    VIDRNDT_DS_DXR            = 7,
+    VIDRNDT_DS_NULL_COMP      = 8,
+    VIDRNDT_DS_NULL_UNCOMP    = 9,
+    VIDRNDT_DS_EVR            = 10,
+    VIDRNDT_DS_EVR_CUSTOM     = 11,
+    VIDRNDT_DS_MADVR          = 12,
+    VIDRNDT_DS_SYNC           = 13,
+    VIDRNDT_DS_MPCVR          = 14,
 };
 
 // Enumeration for MCE remote control (careful : add 0x010000 for all keys!)
@@ -476,11 +476,12 @@ class CAppSettings
         LPCTSTR m_section;
 
         int GetSize() {
-            return rfe_array.GetCount();
+            return (int)rfe_array.GetCount();
         }
 
         RecentFileEntry& operator[](int nIndex) {
-            if (nIndex >= 0 && nIndex < rfe_array.GetCount()) return rfe_array[nIndex];
+            ASSERT(nIndex >= 0 && nIndex < rfe_array.GetCount());
+            return rfe_array[nIndex];
         }
 
         void Remove(int nIndex);
@@ -564,6 +565,7 @@ public:
     // Logo
     UINT            nLogoId;
     bool            fLogoExternal;
+    BOOL            fLogoColorProfileEnabled;
     CString         strLogoFileName;
 
     // Web Inteface
@@ -734,6 +736,8 @@ public:
     bool            fPreventMinimize;
     bool            bUseEnhancedTaskBar;
     bool            fLCDSupport;
+    bool            fSeekPreview;
+    int             iSeekPreviewSize;
     bool            fUseSearchInFolder;
     bool            fUseTimeTooltip;
     int             nTimeTooltipPosition;

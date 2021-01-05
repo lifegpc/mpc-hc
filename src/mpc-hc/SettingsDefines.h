@@ -182,6 +182,7 @@
 #define IDS_RS_RECENT_FILES_NUMBER          _T("RecentFilesNumber")
 #define IDS_RS_LOGOID                       _T("LogoID2")
 #define IDS_RS_LOGOEXT                      _T("LogoExt")
+#define IDS_RS_LOGOCOLORPROFILE             _T("LogoColorProfile")
 #define IDS_RS_TRAFILTERS                   _T("TraFilters")
 #define IDS_RS_COMPMONDESKARDIFF            _T("CompMonDeskARDiff")
 #define IDS_RS_HIDECDROMSSUBMENU            _T("HideCDROMsSubMenu")
@@ -281,6 +282,9 @@
 #define IDS_RS_SHOW_CHAPTERS                _T("ShowChapters")
 
 #define IDS_RS_LCD_SUPPORT                  _T("LcdSupport")
+
+#define IDS_RS_SEEKPREVIEW                    _T("UseSeekPreview")
+#define IDS_RS_SEEKPREVIEW_SIZE               _T("SeekPreviewSize")
 
 #define IDS_RS_TOGGLESHADER                 _T("PreSizeShadersEnabled")
 #define IDS_RS_TOGGLESHADERSSCREENSPACE     _T("PostSizeShadersEnabled")

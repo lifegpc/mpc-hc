@@ -25,7 +25,7 @@ This is required for building the translation DLL files.
     c:\Python2.7\Scripts\pip install polib
 
 
-## Part C: Preparing the GCC environment (optional)
+## Part C: Preparing the MSYS and GCC environment (optional)
 
 This is required for building LAV Filters, which is used as the internal codecs by MPC-HC.
 
@@ -35,8 +35,8 @@ binary will be missing the internal filter functionality. So don't use this conf
 releases.
 
 1. Download MSYS2 from <http://www.msys2.org/>.
-   If you are on a 64-bit Operating System, which you should be, get the 64-bit version.
-2. Install it on **`C:\MSYS\`**. You can always install it somewhere else, but these instructions
+   If you are using a 64-bit Operating System, which you should be, get the 64-bit version.
+2. Install it on **`C:\MSYS64\`**. You can always install it somewhere else, but these instructions
    assume the aforementioned place.
 3. Run `msys2_shell.bat` (if you didn't use the installer you must restart MSYS2 after first run).
 4. Install the needed software by running these commands:
@@ -46,13 +46,23 @@ releases.
    pacman -S make pkg-config
    ```
    Note that this is the bare minimum, you can install more packages that can be useful to you.
-5. Download YASM and save it as **yasm.exe** in **`C:\MSYS\usr\bin`**:
-   * 32-bit: <http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win32.exe>
-   * 64-bit: <http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe> (Recommended)
-6. Download and extract MinGW to **`C:\MSYS\mingw\`** from <http://files.1f0.de/mingw/>
+5. Download and extract MinGW to **`C:\MSYS64\mingw64\`** from <http://files.1f0.de/mingw/>
    (you might use the one that ships with MSYS2, but we recommend this one)
-7. Create a file named **build.user.bat** in **`C:\mpc-hc\`** containing the following entries,
-   adapted for your system:
+6. It is recommended to add **`C:\MSYS64\mingw64\bin`** and **`C:\MSYS64\usr\bin`** to the %PATH% environment variable.
+   Windows Control Panel > System > Advanced System Settings > Environment variables
+   This allows you to run GCC and all other MSYS tools from the Windows command line.
+
+
+## Part D: Yasm
+
+Download YASM and save it as **yasm.exe** in **`C:\MSYS64\usr\bin`** (if using MSYS) or somewhere else in %PATH% (for example **`C:\Windows`**):
+   * For 64-bit Windows: <http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe> (Recommended)
+   * For 32-bit Windows: <http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win32.exe>
+
+
+## Part E: Config file with paths
+
+Create a file named **build.user.bat** in the source code folder of MPC-HC (see part F). It should have the following contents (with paths adapted for your system):
 
     ```bat
     @ECHO OFF
@@ -70,26 +80,25 @@ releases.
     SET "MPCHC_WINSDK_VER=8.1"
     ```
 
-### NOTES
+Notes:
 
-* For Visual Studio, we will try to detect the VS installation path automatically.
-  If that fails you need to specify the installation path yourself. For example:
-  ```bat
+* For Visual Studio, we will try to detect the VS installation path automatically.  If that fails you need to specify the installation path yourself. For example:
+  ```
   SET "MPCHC_VS_PATH=%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Community\"
   ```
 * If you installed the MSYS/MinGW package in another directory you will have to use that path in the previous steps.
 * If you don't have Git installed then the build version will be inaccurate, the revision number will be a hard-coded as zero.
 
 
-## Part D: Downloading and compiling the MPC-HC source
+## Part F: Downloading the MPC-HC source
 
 You need Git for downloading the source code.
 
-Install **Git for Windows** from <https://git-for-windows.github.io/> or **Git Extensions** from <http://gitextensions.github.io/>.
+Install **Git for Windows** from <https://git-for-windows.github.io/> and also **Git Extensions** from <http://gitextensions.github.io/>.
 Choose `Use Git from the Windows command prompt`. This isn't mandatory, so if you choose
 `Use Git from Git Bash only` make sure you set the `MPCHC_GIT` variable in `build.user.bat`.
 
-1. Use Git to clone MPC-HC's repository to **C:\mpc-hc** (or anywhere else you like).
+Use Git to clone MPC-HC's repository to **C:\mpc-hc** (or anywhere else you like).
 
     1. Install Git
     2. Run these commands:
@@ -119,21 +128,24 @@ Choose `Use Git from the Windows command prompt`. This isn't mandatory, so if yo
 
         Note that you can add `-b master` to the `git clone` command if you want to get the latest
         stable version instead of the latest development version
-2. Open the solution file **C:\mpc-hc\mpc-hc.sln**.
+        
+## Part G: Compiling the MPC-HC source
+
+1. Open the solution file **C:\mpc-hc\mpc-hc.sln**.
    Change the solution's configuration to **Release** (in the toolbar).
-3. Press **F7** to build the solution.
-4. You now have **mpc-hc.exe** under **C:\mpc-hc\bin\mpc-hc_x86**
-5. Open the solution file **C:\mpc-hc\mpciconlib.sln**
-6. Press **F7** to build the solution.
-7. You now have **mpciconlib.dll** under **C:\mpc-hc\bin\mpc-hc_x86**
-8. Open the solution file **C:\mpc-hc\mpcresources.sln**
-9. Build **BuildAll** project.
-10. You now have **mpcresources.XX.dll** under **C:\mpc-hc\bin\mpc-hc_x86\Lang**
+2. Press **F7** to build the solution.
+3. You now have **mpc-hc.exe** under **C:\mpc-hc\bin\mpc-hc_x86**
+4. Open the solution file **C:\mpc-hc\mpciconlib.sln**
+5. Press **F7** to build the solution.
+6. You now have **mpciconlib.dll** under **C:\mpc-hc\bin\mpc-hc_x86**
+7. Open the solution file **C:\mpc-hc\mpcresources.sln**
+8. Build **BuildAll** project.
+9. You now have **mpcresources.XX.dll** under **C:\mpc-hc\bin\mpc-hc_x86\Lang**
 
 Alternatively, you can use **build.bat** that can build everything for you (run: `build.bat help` for more info)
 
 
-## Part E: Building the installer
+## Part H: Building the installer
 
 Download Inno Setup Unicode v5.5.9 or newer from <http://www.jrsoftware.org/isdl.php>.
 Install everything and then go to **C:\mpc-hc\distrib**, open **mpc-hc_setup.iss** with Inno Setup,

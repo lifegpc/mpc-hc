@@ -133,14 +133,8 @@
       <AdditionalDependencies>RARFileSource.res;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\thirdparty\ZenLib\library\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <SDLCheck Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</SDLCheck>
+      <DisableSpecificWarnings>26812</DisableSpecificWarnings>
     </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="$(Configuration.Contains('Lite'))">
-    <Link>
-      <AdditionalDependencies>libass.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\thirdparty\MessageBoxDialog\MessageBoxDialog.cpp" />
@@ -246,6 +240,7 @@
     <ClCompile Include="PlayerNavigationBar.cpp" />
     <ClCompile Include="PlayerNavigationDialog.cpp" />
     <ClCompile Include="PlayerPlaylistBar.cpp" />
+    <ClCompile Include="PlayerPreView.cpp" />
     <ClCompile Include="PlayerSeekBar.cpp" />
     <ClCompile Include="PlayerStatusBar.cpp" />
     <ClCompile Include="PlayerSubresyncBar.cpp" />
@@ -435,6 +430,7 @@
     <ClInclude Include="PlayerNavigationBar.h" />
     <ClInclude Include="PlayerNavigationDialog.h" />
     <ClInclude Include="PlayerPlaylistBar.h" />
+    <ClInclude Include="PlayerPreView.h" />
     <ClInclude Include="PlayerSeekBar.h" />
     <ClInclude Include="PlayerStatusBar.h" />
     <ClInclude Include="PlayerSubresyncBar.h" />
