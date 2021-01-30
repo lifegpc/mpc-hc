@@ -96,7 +96,8 @@ bool CTextFile::Open(LPCTSTR lpszFileName)
         if (m_detectResult) {
             if (m_detectResult->bom) {
                 if (!strcmp(m_detectResult->encoding, "UTF-16LE") || !strcmp(m_detectResult->encoding, "UTF-16BE")) m_offset = 2;
-                if (!strcmp(m_detectResult->encoding, "UTF-8")) m_offset = 3;
+                if (!strcmp(m_detectResult->encoding, "UTF-8") || !strcmp(m_detectResult->encoding, "UTF-7") || !strcmp(m_detectResult->encoding, "UTF-1")) m_offset = 3;
+                if (!strcmp(m_detectResult->encoding, "UTF-32LE") || !strcmp(m_detectResult->encoding, "UTF-32BE")) m_offset = 4;
             }
             Seek(0, begin);
             // No need use iconv to convert.
@@ -176,7 +177,7 @@ CTextFile::enc CTextFile::GetEncoding()
 
 bool CTextFile::IsUnicode()
 {
-    return m_encoding == UTF8 || m_encoding == LE16 || m_encoding == BE16;
+    return m_encoding == UTF8 || m_encoding == LE16 || m_encoding == BE16 || (m_detectResult && m_detectResult->encoding && (!strcmp(m_detectResult->encoding, "UTF-7") || !strcmp(m_detectResult->encoding, "UTF-1") || !strcmp(m_detectResult->encoding, "UTF-32LE") || !strcmp(m_detectResult->encoding, "UTF-32BE")));
 }
 
 // CFile
@@ -376,8 +377,13 @@ BOOL CTextFile::ReadString(CStringA& str)
     bool fEOF = true;
 
     str.Truncate(0);
-
-    if (m_encoding == DEFAULT_ENCODING) {
+    if (m_detectResult) {
+        CStringW temp;
+        BOOL re = ReadString(temp);
+        str.Append(CW2A(temp));
+        return re;
+    }
+    else if (m_encoding == DEFAULT_ENCODING) {
         CString s;
         fEOF = !__super::ReadString(s);
         str = TToA(s);
