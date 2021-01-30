@@ -60,13 +60,11 @@ bool CTextFile::Open(LPCTSTR lpszFileName)
 
     try {
         if (bUseChardetlib) {
-            char* buffer = new char[4097];
+            char buffer[4097];
             UINT le = Read(buffer, 4096);
             if (le <= 0) return Close(), false;
             buffer[le] = '\0';
             m_detectResult = charDet::charDetect(buffer, le);
-            delete buffer;
-            buffer = NULL;
         }
         if (__super::GetLength() >= 2 && m_detectResult == NULL) {
             if (bUseChardetlib) Seek(0, begin);
