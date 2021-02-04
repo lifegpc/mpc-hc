@@ -780,6 +780,7 @@ CMainFrame::CMainFrame()
     , m_AngleX(0)
     , m_AngleY(0)
     , m_AngleZ(0)
+    , m_iDefRotation(0)
     , m_pGraphThread(nullptr)
     , m_bOpenedThroughThread(false)
     , m_evOpenPrivateFinished(FALSE, TRUE)
@@ -1130,6 +1131,9 @@ void CMainFrame::OnClose()
     s.UIceClient.DisConnect();
 
     SendAPICommand(CMD_DISCONNECT, L"\0");  // according to CMD_NOTIFYENDOFSTREAM (ctrl+f it here), you're not supposed to send NULL here
+
+    AfxGetMyApp()->SetClosingState();
+
     __super::OnClose();
 }
 
@@ -1902,9 +1906,9 @@ void CMainFrame::OnTimer(UINT_PTR nIDEvent)
                 switch (GetPlaybackMode()) {
                     case PM_FILE:
                         g_bExternalSubtitleTime = false;
-                        if (m_pMS) {
+                        if (m_pGB && m_pMS) {
                             m_pMS->GetCurrentPosition(&rtNow);
-                            if (!m_pMS) return; // can happen very rarely due to race condition
+                            if (!m_pGB || !m_pMS) return; // can happen very rarely due to race condition
                             m_pMS->GetDuration(&rtDur);
 
                             if (abRepeatPositionBEnabled && rtNow >= abRepeatPositionB) {
@@ -4666,6 +4670,13 @@ BOOL IsSubtitleFilename(CString filename)
 {
     CString ext = CPath(filename).GetExtension().MakeLower();
     return IsSubtitleExtension(ext);
+}
+
+BOOL IsAudioFilename(CString filename)
+{
+    const CMediaFormats& mf = AfxGetAppSettings().m_Formats;
+    CString ext = CPath(filename).GetExtension().MakeLower();
+    return mf.FindExt(ext, true);
 }
 
 void CMainFrame::OnDropFiles(CAtlList<CString>& slFiles, DROPEFFECT dropEffect)
@@ -7481,12 +7492,11 @@ void CMainFrame::OnUpdateViewPanNScanPresets(CCmdUI* pCmdUI)
 bool CMainFrame::PerformFlipRotate()
 {
     HRESULT hr = E_NOTIMPL;
-
+    // Note: m_AngleZ is counterclockwise, so value 270 means rotated 90 degrees clockwise
     if (m_pCAP3) {
         bool isFlip   = m_AngleX == 180;
         bool isMirror = m_AngleY == 180;
-        // both rotate counterclockwise
-        int rotation = (m_AngleZ != 0) ? 360 - m_AngleZ: m_AngleZ;
+        int rotation = (360 - m_AngleZ + m_iDefRotation) % 360;
         if (m_pMVRS) {
             // MadVR: does not support mirror, instead of flip we rotate 180 degrees
             hr = m_pCAP3->SetRotation(isFlip ? (rotation + 180) % 360 : rotation);
@@ -7499,6 +7509,7 @@ bool CMainFrame::PerformFlipRotate()
             }
         }
     } else if (m_pCAP) {
+        // default angle has already been set, so only apply custom angle
         hr = m_pCAP->SetVideoAngle(Vector(Vector::DegToRad(m_AngleX), Vector::DegToRad(m_AngleY), Vector::DegToRad(m_AngleZ)));
     }
 
@@ -7581,6 +7592,7 @@ void CMainFrame::OnViewRotate(UINT nID)
     ASSERT(m_AngleZ >= 0);
 
     if (PerformFlipRotate()) {
+        // FIXME: do proper resizing of the window after rotate
         if (!m_pMVRC) {
             MoveVideoWindow();
         }
@@ -10260,7 +10272,7 @@ void CMainFrame::SetDefaultFullscreenState()
         POSITION pos = s.slFiles.GetHeadPosition();
         while (pos) {
             CString fpath = s.slFiles.GetNext(pos);
-            CString ext = fpath.Mid(fpath.ReverseFind('.'));
+            CString ext = fpath.Mid(fpath.ReverseFind('.') + 1);
             if (!mf.FindExt(ext, true)) {
                 clGoFullscreen = true;
                 break;
@@ -11019,6 +11031,10 @@ void CMainFrame::SetPreviewVideoPosition() {
         if (m_pMFVDC_preview) {
             m_pMFVDC_preview->SetVideoPosition(nullptr, wr);
         }
+        if (m_pVMR9C_preview) {
+            m_pVMR9C_preview->SetVideoPosition(nullptr, wr);
+            m_pVMR9C_preview->SetAspectRatioMode(VMR9ARMode_LetterBox);
+        }
 
         m_pBV_preview->SetDefaultSourcePosition();
         m_pBV_preview->SetDestinationPosition(vr.left, vr.top, vr.Width(), vr.Height());
@@ -11679,7 +11695,8 @@ void CMainFrame::OpenCreateGraphObject(OpenMediaData* pOMD)
     m_bUseSeekPreview = s.fSeekPreview && ::IsWindow(m_wndPreView.m_hWnd);
     if (OpenFileData* pFileData = dynamic_cast<OpenFileData*>(pOMD)) {
         CString fn = pFileData->fns.GetHead();
-        if (!fn.IsEmpty() && (fn.Find(L"://") >= 0)) { // disable seek preview for streaming data.
+        if (!fn.IsEmpty() && ((fn.Find(L"://") >= 0) || IsAudioFilename(fn))) {
+            // disable seek preview for streaming data and audio files
             m_bUseSeekPreview = false;
         }
     }
@@ -11898,7 +11915,7 @@ HRESULT CMainFrame::PreviewWindowShow(REFERENCE_TIME rtCur2) {
     }
 
     HRESULT hr = S_OK;
-    rtCur2 = GetClosestKeyFrame(rtCur2);
+    rtCur2 = GetClosestKeyFramePreview(rtCur2);
 
     if (GetPlaybackMode() == PM_DVD && m_pDVDC_preview) {
         DVD_PLAYBACK_LOCATION2 Loc, Loc2;
@@ -11971,7 +11988,9 @@ HRESULT CMainFrame::PreviewWindowShow(REFERENCE_TIME rtCur2) {
     */
 
     if (!m_wndPreView.IsWindowVisible()) {
+        m_wndPreView.SetRelativeSize(AfxGetAppSettings().iSeekPreviewSize);
         m_wndPreView.ShowWindow(SW_SHOWNOACTIVATE);
+        m_wndPreView.SetWindowSize();
     }
 
     return hr;
@@ -12074,20 +12093,44 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
         }
 
         if (m_bUseSeekPreview && bMainFile) {
-            bool bIsVideo = false;
+            bool bIsVideo = false, isRFS = false;
+            CStringW entryRFS;
             BeginEnumFilters(m_pGB, pEF, pBF) {
                 // Checks if any Video Renderer is in the graph
                 if (IsVideoRenderer(pBF)) {
                     bIsVideo = true;
-                    break;
+                    if (isRFS) break;
                 }
+                CLSID clsid2;
+                if (S_OK == pBF->GetClassID(&clsid2) && clsid2 == __uuidof(CRARFileSource)) {
+                    CComQIPtr<IFileSourceFilter> pFSF = pBF;
+                    if (pFSF) {
+                        WCHAR* pFN = nullptr;
+                        AM_MEDIA_TYPE mt;
+                        if (SUCCEEDED(pFSF->GetCurFile(&pFN, &mt)) && pFN && *pFN) {
+                            isRFS = true;
+                            entryRFS = pFN;
+                            CoTaskMemFree(pFN);
+                        }
+                    }
+                }
+                if (isRFS && bIsVideo) break;
             }
             EndEnumFilters;
 
-            if (!bIsVideo || FAILED(m_pGB_preview->RenderFile(fn, nullptr))) {
+            HRESULT previewHR;
+            if (isRFS) {
+                CComPtr<CFGManager> fgm = static_cast<CFGManager*>(m_pGB_preview.p);
+                previewHR = fgm->RenderRFSFileEntry(fn, nullptr, entryRFS);
+            } else {
+                previewHR = m_pGB_preview->RenderFile(fn, nullptr);
+            }
+
+            if (!bIsVideo || FAILED(previewHR)) {
                 if (m_pGB_preview) {
                     m_pMFVP_preview = nullptr;
                     m_pMFVDC_preview = nullptr;
+                    m_pVMR9C_preview = nullptr;
 
                     m_pMC_preview.Release();
                     m_pME_preview.Release();
@@ -12118,7 +12161,7 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
                 r.fns.AddTail(fn);
                 CPlaylistItem* m_pli = m_wndPlaylistBar.GetCur();
                 if (m_pli && !m_pli->m_label.IsEmpty()) {
-                    if (m_pli->m_bYoutubeDL || PathUtils::StripPathOrUrl(fn).Left(25) != m_pli->m_label.Left(25)) {
+                    if (m_pli->m_bYoutubeDL || !IsNameSimilar(m_pli->m_label, PathUtils::StripPathOrUrl(fn))) {
                         if (!m_pli->m_bYoutubeDL || fn == m_pli->m_ydlSourceURL) r.title = m_pli->m_label;
                         else {
                             CString videoName(m_pli->m_label);
@@ -12141,7 +12184,7 @@ void CMainFrame::OpenFile(OpenFileData* pOFD)
                         }
                     }
                     EndEnumFilters;
-                    if (!title.IsEmpty()) r.title = title;
+                    if (!title.IsEmpty() && !IsNameSimilar(title, PathUtils::StripPathOrUrl(fn))) r.title = title;
                 }
                 if (m_pli) {
                     if (!m_pli->m_bYoutubeDL && m_pli->m_fns.GetCount() > 1) {
@@ -13233,7 +13276,7 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
 
                 CString fn = GetFileName();
 
-                if (has_title & title != fn) m_current_rfe.title = title;
+                if (has_title & !IsNameSimilar(title, fn)) m_current_rfe.title = title;
 
                 if (!has_title) {
                     title = fn;
@@ -13337,7 +13380,7 @@ int CMainFrame::SetupAudioStreams()
 
                 // If the splitter is the internal LAV Splitter and no language preferences
                 // have been set at splitter level, we can override its choice safely
-                CComQIPtr<IBaseFilter> pBF = bIsSplitter ? pSS : pObject;
+                CComQIPtr<IBaseFilter> pBF = bIsSplitter ? pSS : reinterpret_cast<IBaseFilter*>(pObject.p);
                 if (pBF && CFGFilterLAV::IsInternalInstance(pBF)) {
                     bSkipTrack = false;
                     if (CComQIPtr<ILAVFSettings> pLAVFSettings = pBF) {
@@ -13563,6 +13606,7 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
     auto& s = AfxGetAppSettings();
 
     m_fValidDVDOpen = false;
+    m_iDefRotation = 0;
 
     OpenFileData* pFileData = dynamic_cast<OpenFileData*>(pOMD.m_p);
     OpenDVDData* pDVDData = dynamic_cast<OpenDVDData*>(pOMD.m_p);
@@ -13617,13 +13661,17 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
             throw (UINT)IDS_INVALID_PARAMS_ERROR;
         }
 
-        m_pCAP3 = nullptr;
-        m_pCAP2 = nullptr;
-        m_pCAP = nullptr;
+        m_pCAP3  = nullptr;
+        m_pCAP2  = nullptr;
+        m_pCAP   = nullptr;
+        m_pVMRWC = nullptr;
+        m_pVMRMC = nullptr;
+        m_pMFVDC = nullptr;
+        m_pMFVP  = nullptr;
 
-        CComPtr<IVMRMixerBitmap9>    pVMB;
-        CComPtr<IMFVideoMixerBitmap> pMFVMB;
-        CComPtr<IMadVRTextOsd>       pMVTO;
+        CComPtr<IVMRMixerBitmap9>    pVMB   = nullptr;
+        CComPtr<IMFVideoMixerBitmap> pMFVMB = nullptr;
+        CComPtr<IMadVRTextOsd>       pMVTO  = nullptr;
 
         m_pGB->FindInterface(IID_PPV_ARGS(&m_pCAP), TRUE);
         m_pGB->FindInterface(IID_PPV_ARGS(&m_pCAP2), TRUE);
@@ -13632,6 +13680,7 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
         m_pGB->FindInterface(IID_PPV_ARGS(&m_pVMRMC), TRUE);
         m_pGB->FindInterface(IID_PPV_ARGS(&pVMB), TRUE);
         m_pGB->FindInterface(IID_PPV_ARGS(&pMFVMB), TRUE);
+
         m_pMVRC = m_pCAP;
         m_pMVRI = m_pCAP;
         m_pMVRS = m_pCAP;
@@ -13665,6 +13714,7 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
         if (m_bUseSeekPreview) {
             m_pGB_preview->FindInterface(IID_PPV_ARGS(&m_pMFVDC_preview), TRUE);
             m_pGB_preview->FindInterface(IID_PPV_ARGS(&m_pMFVP_preview), TRUE);
+            m_pGB_preview->FindInterface(IID_PPV_ARGS(&m_pVMR9C_preview), TRUE);
 
             if (m_pMFVDC_preview) {
                 RECT Rect;
@@ -13718,15 +13768,23 @@ bool CMainFrame::OpenMediaPrivate(CAutoPtr<OpenMediaData> pOMD)
                 m_pMS->SetPositions(&rtPos, AM_SEEKING_AbsolutePositioning, nullptr, AM_SEEKING_NoPositioning);
             }
 
-            if (m_pCAP2 && m_pFSF) {
+            if (m_pFSF && (m_pCAP2 || m_pCAP3)) {
                 CComQIPtr<IBaseFilter> pBF = m_pFSF;
                 if (GetCLSID(pBF) == GUID_LAVSplitter || GetCLSID(pBF) == GUID_LAVSplitterSource) {
                     if (CComQIPtr<IPropertyBag> pPB = pBF) {
                         CComVariant var;
                         if (SUCCEEDED(pPB->Read(_T("rotation"), &var, nullptr)) && var.vt == VT_BSTR) {
-                            // We need to convert the angle to use trigonomeric conventions
-                            m_pCAP2->SetDefaultVideoAngle(Vector(0, 0, Vector::DegToRad((360 - _tcstol(var.bstrVal, nullptr, 10) % 360) % 360)));
+                            int rotatevalue = _wtoi(var.bstrVal);
+                            if (rotatevalue == 90 || rotatevalue == 180 || rotatevalue == 270) {
+                                m_iDefRotation = rotatevalue;
+                                if (m_pCAP3) {
+                                    m_pCAP3->SetRotation(rotatevalue);
+                                } else {
+                                    m_pCAP2->SetDefaultVideoAngle(Vector(0, 0, Vector::DegToRad(360 - rotatevalue)));
+                                }
+                            }
                         }
+                        var.Clear();
                     }
                 }
             }
@@ -13890,6 +13948,7 @@ void CMainFrame::CloseMediaPrivate()
         PreviewWindowHide();
         m_pMFVP_preview.Release();
         m_pMFVDC_preview.Release();
+        m_pVMR9C_preview.Release();
 
         m_pFS_preview.Release();
         m_pMS_preview.Release();
@@ -15895,56 +15954,23 @@ bool CMainFrame::GetKeyFrame(REFERENCE_TIME rtTarget, REFERENCE_TIME rtMin, REFE
     return false;
 }
 
-bool CMainFrame::GetNeighbouringKeyFrames(REFERENCE_TIME rtTarget, std::pair<REFERENCE_TIME, REFERENCE_TIME>& keyframes) const {
-    bool ret = false;
-    REFERENCE_TIME rtLower, rtUpper;
-    if (!m_kfs.empty()) {
-        const auto cbegin = m_kfs.cbegin();
-        const auto cend = m_kfs.cend();
-        ASSERT(std::is_sorted(cbegin, cend));
-        auto upper = std::upper_bound(cbegin, cend, rtTarget);
-        if (upper == cbegin) {
-            // we assume that streams always start with keyframe
-            rtLower = *cbegin;
-            rtUpper = (++upper != cend) ? *upper : rtLower;
-        } else if (upper == cend) {
-            rtLower = rtUpper = *(--upper);
-        } else {
-            rtUpper = *upper;
-            rtLower = *(--upper);
-        }
-        ret = true;
-    } else {
-        rtLower = rtUpper = rtTarget;
-    }
-    keyframes = std::make_pair(rtLower, rtUpper);
-
-    return ret;
-}
-
-REFERENCE_TIME CMainFrame::GetClosestKeyFrame(REFERENCE_TIME rtTarget) {
-    REFERENCE_TIME rtStart, rtDuration;
-    m_wndSeekBar.GetRange(rtStart, rtDuration);
-    if (rtDuration && rtTarget >= rtDuration) {
-        return rtDuration;
-    }
-
-    LoadKeyFrames();
-
-    REFERENCE_TIME ret = rtTarget;
-    std::pair<REFERENCE_TIME, REFERENCE_TIME> keyframes;
-    if (GetNeighbouringKeyFrames(rtTarget, keyframes)) {
-        ret = (rtTarget - keyframes.first < keyframes.second - rtTarget) ? keyframes.first : keyframes.second;
-    }
-
-    return ret;
-}
-
 REFERENCE_TIME CMainFrame::GetClosestKeyFrame(REFERENCE_TIME rtTarget, REFERENCE_TIME rtMaxForwardDiff, REFERENCE_TIME rtMaxBackwardDiff) const
 {
     REFERENCE_TIME rtKeyframe;
     REFERENCE_TIME rtMin = std::max(rtTarget - rtMaxBackwardDiff, 0LL);
     REFERENCE_TIME rtMax = std::min(rtTarget + rtMaxForwardDiff, GetDur());
+
+    if (GetKeyFrame(rtTarget, rtMin, rtMax, true, rtKeyframe)) {
+        return rtKeyframe;
+    }
+    return rtTarget;
+}
+
+REFERENCE_TIME CMainFrame::GetClosestKeyFramePreview(REFERENCE_TIME rtTarget) const
+{
+    REFERENCE_TIME rtKeyframe = 0;
+    REFERENCE_TIME rtMin = std::max(rtTarget - 200000000LL, 0LL);
+    REFERENCE_TIME rtMax = std::min(rtTarget + 200000000LL, GetDur());
 
     if (GetKeyFrame(rtTarget, rtMin, rtMax, true, rtKeyframe)) {
         return rtKeyframe;
@@ -18021,6 +18047,9 @@ HRESULT CMainFrame::CreateThumbnailToolbar()
             // Reselect the old objects back into their DCs
             sourceDC.SelectObject(oldSourceDCObj);
             destDC.SelectObject(oldDestDCObj);
+
+            sourceDC.DeleteDC();
+            destDC.DeleteDC();
         }
 
         CImageList imageList;

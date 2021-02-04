@@ -69,9 +69,11 @@ BOOL CPlayerSeekBar::Create(CWnd* pParentWnd)
     }
 
     if (!AppIsThemeLoaded()) {
-        if (CMPCThemeUtil::getFontByType(mpcThemeFont, GetWindowDC(), GetParent(), CMPCThemeUtil::MessageFont)) {
+        CDC* pDC = GetWindowDC();
+        if (CMPCThemeUtil::getFontByType(mpcThemeFont, pDC, GetParent(), CMPCThemeUtil::MessageFont)) {
             SetFont(&mpcThemeFont);
         }
+        ReleaseDC(pDC);
     }
 
     // Should never be RTLed
@@ -267,9 +269,6 @@ void CPlayerSeekBar::CreateThumb(bool bEnabled, CDC& parentDC)
             CBrush b(bkg);
             pThumb->FillRect(&r, &b);
         }
-
-
-
     } else {
         ASSERT(FALSE);
     }
@@ -601,10 +600,12 @@ void CPlayerSeekBar::OnPaint()
             CBrush fb;
             fb.CreateSolidBrush(CMPCTheme::NoBorderColor);
             dc.FrameRect(r, &fb);
+            fb.DeleteObject();
 
             CRgn rg;
             VERIFY(rg.CreateRectRgnIndirect(&r));
             ExtSelectClipRgn(dc, rg, RGN_XOR);
+            rg.DeleteObject();
 
             m_lastThumbRect = r;
         } else {
@@ -659,6 +660,7 @@ void CPlayerSeekBar::OnPaint()
             CBrush fb;
             fb.CreateSolidBrush(CMPCTheme::NoBorderColor);
             dc.FrameRect(&r, &fb);
+            fb.DeleteObject();
             dc.ExcludeClipRect(&r);
         }
 
@@ -941,8 +943,7 @@ void CPlayerSeekBar::MoveThumbPreview(const CPoint point) {
 
     if (pos >= 0) {
         if (GetKeyState(VK_SHIFT) >= 0) {
-            REFERENCE_TIME rtMaxDiff = AfxGetAppSettings().bAllowInaccurateFastseek ? 200000000LL : std::min(100000000LL, m_rtStop / 30);
-            pos = m_pMainFrame->GetClosestKeyFrame(pos, rtMaxDiff, rtMaxDiff);
+            pos = m_pMainFrame->GetClosestKeyFramePreview(pos);
         }
 
         SetPosInternalPreview(pos);
@@ -956,10 +957,7 @@ void CPlayerSeekBar::PreviewWindowShow() {
             GetCursorPos(&point);
             ScreenToClient(&point);
             MoveThumbPreview(point);
-            CRect r;
-            m_pMainFrame->m_wndPreView.GetClientRect(r);
-            m_pMainFrame->m_wndPreView.InvalidateRect(r);
-        }
+        } 
         m_pMainFrame->PreviewWindowShow(m_pos_preview);
     }
 }
