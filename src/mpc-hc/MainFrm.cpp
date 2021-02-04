@@ -13256,21 +13256,23 @@ void CMainFrame::OpenSetupWindowTitle(bool reset /*= false*/)
                 }
 
                 if (!has_title) {
+                    CString ext = GetFileName().Mid(GetFileName().ReverseFind('.'));
+                    if (ext == ".mpls" && m_bHasBDMeta) {
+                        title = GetBDMVMeta().title;
+                        has_title = true;
+                    } else if (ext != ".mpls") {
+                        m_bHasBDMeta = false;
+                        m_BDMeta.RemoveAll();
+                    }
+                }
+
+                if (!has_title) {
                     CPlaylistItem* pli = m_wndPlaylistBar.GetCur();               
                     if (pli && !pli->m_fns.IsEmpty() && pli->m_label && !pli->m_label.IsEmpty()) {
                         if (s.fTitleBarTextTitle || pli->m_bYoutubeDL) {
                             title = pli->m_label;
                             has_title = true;
                         }
-                    }
-                }
-
-                if (!has_title) {
-                    CString ext = GetFileName().Mid(GetFileName().ReverseFind('.'));
-                    if (ext == ".mpls" && m_bHasBDMeta) title = GetBDMVMeta().title;
-                    else if (ext != ".mpls") {
-                        m_bHasBDMeta = false;
-                        m_BDMeta.RemoveAll();
                     }
                 }
 
