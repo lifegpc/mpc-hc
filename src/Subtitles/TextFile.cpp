@@ -607,7 +607,8 @@ BOOL CTextFile::ReadString(CStringW& str)
             CStringW buf = GetBufferContent();
             if (!buf.GetLength()) return FALSE;
             CStringW temp;
-            if (int pos = buf.Find(L"\n") > -1) {
+            int pos = buf.Find(L"\n");
+            if (pos > -1) {
                 temp = buf.Left(pos + 1);
                 bLineEndFound = true;
             } else temp = buf;
