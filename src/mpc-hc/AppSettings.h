@@ -565,7 +565,7 @@ public:
     // Logo
     UINT            nLogoId;
     bool            fLogoExternal;
-    bool            fLogoColorProfileEnabled;
+    BOOL            fLogoColorProfileEnabled;
     CString         strLogoFileName;
 
     // Web Inteface
@@ -865,6 +865,7 @@ public:
 
     int nStreamPosPollerInterval;
     bool bShowLangInStatusbar;
+    bool bShowFPSInStatusbar;
 
     bool bAddLangCodeWhenSaveSubtitles;
     bool bUseTitleInRecentFileList;
