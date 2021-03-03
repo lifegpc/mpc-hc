@@ -232,6 +232,7 @@ CAppSettings::CAppSettings()
     , bEnableCrashReporter(true)
     , nStreamPosPollerInterval(100)
     , bShowLangInStatusbar(false)
+    , bShowFPSInStatusbar(false)
     , bRenderSubtitlesUsingLibass(false)
     , bAddLangCodeWhenSaveSubtitles(true)
     , bUseTitleInRecentFileList(true)
@@ -1176,6 +1177,7 @@ void CAppSettings::SaveSettings()
 
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_TIME_REFRESH_INTERVAL, nStreamPosPollerInterval);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_LANG_STATUSBAR, bShowLangInStatusbar);
+    pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_FPS_STATUSBAR, bShowFPSInStatusbar);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES, bAddLangCodeWhenSaveSubtitles);
     pApp->WriteProfileInt(IDS_R_SETTINGS, IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST, bUseTitleInRecentFileList);
 
@@ -1871,8 +1873,8 @@ void CAppSettings::LoadSettings()
 
     fSeekPreview = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW, FALSE);
     iSeekPreviewSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SEEKPREVIEW_SIZE, 15);
-    if (iSeekPreviewSize < 10 || iSeekPreviewSize > 30) iSeekPreviewSize = 15;
-
+    if (iSeekPreviewSize < 10) iSeekPreviewSize = 10;
+    if (iSeekPreviewSize > 40) iSeekPreviewSize = 40;
 
     // Save analog capture settings
     iDefaultCaptureDevice = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_DEFAULT_CAPTURE, 0);
@@ -1989,6 +1991,7 @@ void CAppSettings::LoadSettings()
 
     nStreamPosPollerInterval = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_TIME_REFRESH_INTERVAL, 100);
     bShowLangInStatusbar = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_LANG_STATUSBAR, FALSE);
+    bShowFPSInStatusbar = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SHOW_FPS_STATUSBAR, FALSE);
 
     bAddLangCodeWhenSaveSubtitles = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_ADD_LANGCODE_WHEN_SAVE_SUBTITLES, TRUE);
     bUseTitleInRecentFileList = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_USE_TITLE_IN_RECENT_FILE_LIST, TRUE);
@@ -2120,7 +2123,7 @@ void CAppSettings::UpdateRenderersData(bool fSave)
 
         r.fResetDevice = !!pApp->GetProfileInt(IDS_R_SETTINGS, _T("ResetDevice"), FALSE);
 
-        r.subPicQueueSettings.nSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SPCSIZE, 10);
+        r.subPicQueueSettings.nSize = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SPCSIZE, 0);
         r.subPicQueueSettings.nMaxRes = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_SPCMAXRES, 0);
         r.subPicQueueSettings.bDisableSubtitleAnimation = !!pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_DISABLE_SUBTITLE_ANIMATION, FALSE);
         r.subPicQueueSettings.nRenderAtWhenAnimationIsDisabled = pApp->GetProfileInt(IDS_R_SETTINGS, IDS_RS_RENDER_AT_WHEN_ANIM_DISABLED, 50);
@@ -2365,9 +2368,11 @@ void CAppSettings::ParseCommandLine(CAtlList<CString>& cmdln)
                 fShowDebugInfo = true;
             } else if (sw == _T("nocrashreporter")) {
 #if USE_DRDUMP_CRASH_REPORTER
-                CrashReporter::Disable();
+                if (CrashReporter::IsEnabled()) {
+                    CrashReporter::Disable();
+                    MPCExceptionHandler::Enable();
+                }
 #endif
-                MPCExceptionHandler::Enable();
             } else if (sw == _T("audiorenderer") && pos) {
                 SetAudioRenderer(_ttoi(cmdln.GetNext(pos)));
             } else if (sw == _T("shaderpreset") && pos) {

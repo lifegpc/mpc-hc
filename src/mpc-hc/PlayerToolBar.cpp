@@ -94,25 +94,27 @@ void CPlayerToolBar::LoadToolbarImage()
 {
     // We are currently not aware of any cases where the scale factors are different
     float dpiScaling = (float)std::min(m_pMainFrame->m_dpi.ScaleFactorX(), m_pMainFrame->m_dpi.ScaleFactorY());
-    float defaultToolbarScaling = AfxGetAppSettings().nDefaultToolbarSize / 16.0f;
+    int targetsize = int(dpiScaling * AfxGetAppSettings().nDefaultToolbarSize);
+    float svgscale = targetsize / 16.0f;
 
     CImage image, themedImage, origImage;
     m_pButtonsImages.reset();
     m_pDisabledButtonsImages.reset();
 
     bool colorToolbar = false, toolbarImageLoaded = false;
-    if (LoadExternalToolBar(image, true)) {
+    if (LoadExternalToolBar(origImage, true)) {
         colorToolbar = true;
         toolbarImageLoaded = true;
-    } else if (LoadExternalToolBar(image, false)) {
+    } else if (LoadExternalToolBar(origImage, false)) {
         toolbarImageLoaded = true;
     }
 
-    if (toolbarImageLoaded || (!AfxGetAppSettings().bUseLegacyToolbar && SUCCEEDED(SVGImage::Load(IDF_SVG_TOOLBAR, image, dpiScaling * defaultToolbarScaling)))) {
-        origImage = image;
+    if (toolbarImageLoaded || (!AfxGetAppSettings().bUseLegacyToolbar && SUCCEEDED(SVGImage::Load(IDF_SVG_TOOLBAR, origImage, svgscale)))) {
         if (AppIsThemeLoaded() && colorToolbar == false) {
-            ImageGrayer::UpdateColor(image, themedImage, false, ImageGrayer::mpcMono);
+            ImageGrayer::UpdateColor(origImage, themedImage, false, ImageGrayer::mpcMono);
             image = themedImage;
+        } else {
+            image = origImage;
         }
         CBitmap* bmp = CBitmap::FromHandle(image);
         int width = image.GetWidth();
@@ -133,6 +135,7 @@ void CPlayerToolBar::LoadToolbarImage()
                         m_pDisabledButtonsImages.reset(DEBUG_NEW CImageList());
                         m_pDisabledButtonsImages->Create(height, height, ILC_COLOR32 | ILC_MASK, 1, 0);
                         m_pDisabledButtonsImages->Add(CBitmap::FromHandle(imageDisabled), nullptr); // alpha is the mask
+                        imageDisabled.Destroy();
                     } else {
                         m_pDisabledButtonsImages = nullptr;
                     }
@@ -147,8 +150,11 @@ void CPlayerToolBar::LoadToolbarImage()
             GetToolBarCtrl().SetImageList(m_pButtonsImages.get());
             GetToolBarCtrl().SetDisabledImageList(m_pDisabledButtonsImages.get());
         }
-        image.Destroy();
+        if (themedImage) {
+            themedImage.Destroy();
+        }
     }
+    origImage.Destroy();
 }
 
 BOOL CPlayerToolBar::Create(CWnd* pParentWnd)
@@ -324,7 +330,7 @@ void drawButtonBG(NMCUSTOMDRAW nmcd, COLORREF c)
     CBrush fb;
     fb.CreateSolidBrush(CMPCTheme::PlayerButtonBorderColor);
     dc.FrameRect(br, &fb);
-
+    fb.DeleteObject();
     dc.Detach();
 }
 
